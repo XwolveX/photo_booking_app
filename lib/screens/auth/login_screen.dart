@@ -202,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 24),
         const Text(
-          'Chào mừng\ntrở lại! 👋',
+          'Sẵn sàng để\nbắt đầu chưa? 🚀',
           style: TextStyle(
             color: Colors.white,
             fontSize: 32,
