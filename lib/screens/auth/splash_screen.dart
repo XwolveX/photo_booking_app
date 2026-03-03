@@ -43,8 +43,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigate() {
-    final authProvider = context.read<AuthProvider>();
     if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
 
     if (!authProvider.isLoggedIn) {
       Navigator.pushReplacement(
@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final role = authProvider.currentUser!.role;
+    final role = authProvider.currentUser?.role;
     Widget home;
     switch (role) {
       case UserRole.photographer:
@@ -81,8 +81,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // 1. Lấy theme hiện tại
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.primary,
+      // Nền tự động đổi: Navy hoặc Hồng Pastel
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -98,37 +103,42 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      color: AppTheme.secondary,
+                      // Màu Primary tự đổi (Đỏ hồng ở Dark, Hồng nhạt ở Light)
+                      color: theme.colorScheme.primary,
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.secondary.withOpacity(0.4),
+                          color: theme.colorScheme.primary.withOpacity(0.4),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.camera_alt_rounded,
-                      color: Colors.white,
+                      // Màu Icon tương phản với nền nút
+                      color: isDark ? Colors.white : Colors.black87,
                       size: 52,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  // TÊN APP
+                  Text(
                     'SnapBook',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
+                    style: theme.textTheme.displayMedium?.copyWith(
+                      // Tự lấy màu textPrimary từ AppTheme
+                      color: theme.textTheme.displayMedium?.color,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // SLOGAN
                   Text(
                     'Kết nối - Sáng tạo - Tỏa sáng',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      // Tự lấy màu textSecondary (Mờ hơn)
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                       fontSize: 14,
                       letterSpacing: 0.5,
                     ),

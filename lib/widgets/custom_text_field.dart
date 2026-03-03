@@ -28,16 +28,22 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       maxLines: maxLines,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: TextStyle(
+        color: theme.textTheme.bodyLarge?.color,
+        fontSize: 16,),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        hintStyle: TextStyle(
+          color: theme.textTheme.bodyLarge?.color?.withOpacity(0.5),
+        ),
         prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         suffixIcon: suffixIcon,
       ),

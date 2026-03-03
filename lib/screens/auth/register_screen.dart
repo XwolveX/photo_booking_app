@@ -119,40 +119,40 @@ class _RegisterScreenState extends State<RegisterScreen>
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => home),
-      (route) => false,
+          (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppTheme.surface, AppTheme.primary],
+            colors: isDark
+                ? const [AppTheme.surface, AppTheme.primary]
+                : const [Color(0xFFFFF5F7), Color(0xFFFFE4E9)],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // AppBar custom
-              _buildTopBar(),
-
-              // Progress indicator
-              _buildProgressBar(),
-
-              // Content
+              _buildTopBar(theme),
+              _buildProgressBar(theme),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: _currentStep == 0
-                      ? _buildStep1()
+                      ? _buildStep1(theme)
                       : SlideTransition(
-                          position: _slideAnim,
-                          child: _buildStep2(),
-                        ),
+                    position: _slideAnim,
+                    child: _buildStep2(theme),
+                  ),
                 ),
               ),
             ],
@@ -162,13 +162,13 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color),
             onPressed: () {
               if (_currentStep == 1) {
                 setState(() => _currentStep = 0);
@@ -180,7 +180,10 @@ class _RegisterScreenState extends State<RegisterScreen>
           const Spacer(),
           Text(
             'Bước ${_currentStep + 1}/2',
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+            style: TextStyle(
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(width: 16),
         ],
@@ -188,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Widget _buildProgressBar() {
+  Widget _buildProgressBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
@@ -198,7 +201,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               duration: const Duration(milliseconds: 300),
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.secondary,
+                color: theme.colorScheme.primary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -210,8 +213,8 @@ class _RegisterScreenState extends State<RegisterScreen>
               height: 4,
               decoration: BoxDecoration(
                 color: _currentStep >= 1
-                    ? AppTheme.secondary
-                    : Colors.white.withOpacity(0.15),
+                    ? theme.colorScheme.primary
+                    : theme.dividerColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -221,17 +224,14 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  // ── STEP 1: Thông tin cơ bản ──────────────────────────────
-  Widget _buildStep1() {
+  Widget _buildStep1(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Tạo tài khoản\ncủa bạn ✨',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 30,
+          style: theme.textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.w800,
             height: 1.2,
           ),
@@ -239,10 +239,11 @@ class _RegisterScreenState extends State<RegisterScreen>
         const SizedBox(height: 8),
         Text(
           'Điền thông tin để bắt đầu',
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+          ),
         ),
         const SizedBox(height: 32),
-
         Form(
           key: _formKey,
           child: Column(
@@ -259,7 +260,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                 },
               ),
               const SizedBox(height: 14),
-
               CustomTextField(
                 controller: _emailCtrl,
                 label: 'Email',
@@ -275,7 +275,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                 },
               ),
               const SizedBox(height: 14),
-
               CustomTextField(
                 controller: _phoneCtrl,
                 label: 'Số điện thoại',
@@ -289,7 +288,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                 },
               ),
               const SizedBox(height: 14),
-
               CustomTextField(
                 controller: _passwordCtrl,
                 label: 'Mật khẩu',
@@ -301,10 +299,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                     _obscurePassword
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: AppTheme.textSecondary,
+                    color: theme.hintColor,
                   ),
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
@@ -313,7 +310,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                 },
               ),
               const SizedBox(height: 14),
-
               CustomTextField(
                 controller: _confirmCtrl,
                 label: 'Xác nhận mật khẩu',
@@ -325,10 +321,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                     _obscureConfirm
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: AppTheme.textSecondary,
+                    color: theme.hintColor,
                   ),
-                  onPressed: () =>
-                      setState(() => _obscureConfirm = !_obscureConfirm),
+                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Vui lòng xác nhận mật khẩu';
@@ -337,7 +332,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                 },
               ),
               const SizedBox(height: 28),
-
               ElevatedButton(
                 onPressed: _goToStep2,
                 child: const Row(
@@ -357,29 +351,25 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  // ── STEP 2: Chọn Role ─────────────────────────────────────
-  Widget _buildStep2() {
+  Widget _buildStep2(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Bạn là ai? 🎯',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 30,
-            fontWeight: FontWeight.w800,
-          ),
+          style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
         Text(
           'Chọn vai trò phù hợp với bạn',
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+          ),
         ),
         const SizedBox(height: 32),
-
-        // Role cards
         _buildRoleCard(
+          theme: theme,
           role: UserRole.user,
           title: 'Khách hàng',
           subtitle: 'Tìm kiếm & đặt lịch chụp hình, makeup',
@@ -388,8 +378,8 @@ class _RegisterScreenState extends State<RegisterScreen>
           features: ['Đặt lịch photographer', 'Đặt lịch makeup artist', 'Chọn địa điểm', 'Nhắn tin trực tiếp'],
         ),
         const SizedBox(height: 16),
-
         _buildRoleCard(
+          theme: theme,
           role: UserRole.photographer,
           title: 'Photographer',
           subtitle: 'Nhận booking và thể hiện tài năng nhiếp ảnh',
@@ -398,8 +388,8 @@ class _RegisterScreenState extends State<RegisterScreen>
           features: ['Quản lý lịch chụp', 'Đăng portfolio', 'Nhận thanh toán', 'Chat với khách'],
         ),
         const SizedBox(height: 16),
-
         _buildRoleCard(
+          theme: theme,
           role: UserRole.makeuper,
           title: 'Makeup Artist',
           subtitle: 'Nhận booking makeup và trang điểm chuyên nghiệp',
@@ -408,7 +398,6 @@ class _RegisterScreenState extends State<RegisterScreen>
           features: ['Quản lý lịch hẹn', 'Đăng portfolio makeup', 'Nhận thanh toán', 'Chat với khách'],
         ),
         const SizedBox(height: 32),
-
         Consumer<AuthProvider>(
           builder: (_, auth, __) => LoadingButton(
             isLoading: auth.isLoading,
@@ -422,6 +411,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   Widget _buildRoleCard({
+    required ThemeData theme,
     required UserRole role,
     required String title,
     required String subtitle,
@@ -438,10 +428,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : AppTheme.inputFill,
+          color: isSelected ? color.withOpacity(0.15) : theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color : Colors.white.withOpacity(0.08),
+            color: isSelected ? color : theme.dividerColor.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -453,7 +443,6 @@ class _RegisterScreenState extends State<RegisterScreen>
           children: [
             Row(
               children: [
-                // Icon
                 Container(
                   width: 52,
                   height: 52,
@@ -464,34 +453,27 @@ class _RegisterScreenState extends State<RegisterScreen>
                   child: Icon(icon, color: color, size: 28),
                 ),
                 const SizedBox(width: 16),
-
-                // Title
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
+                          fontSize: 18,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                          height: 1.3,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                // Check mark
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   width: 24,
@@ -500,18 +482,14 @@ class _RegisterScreenState extends State<RegisterScreen>
                     color: isSelected ? color : Colors.transparent,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? color : Colors.white.withOpacity(0.3),
+                      color: isSelected ? color : theme.dividerColor.withOpacity(0.3),
                       width: 2,
                     ),
                   ),
-                  child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 14)
-                      : null,
+                  child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
                 ),
               ],
             ),
-
-            // Features (hiển thị khi chọn)
             if (isSelected) ...[
               const SizedBox(height: 16),
               Divider(color: color.withOpacity(0.3), height: 1),

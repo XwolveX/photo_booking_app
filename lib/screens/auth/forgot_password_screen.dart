@@ -49,13 +49,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppTheme.surface, AppTheme.primary],
+            // Đồng bộ màu nền với Login và Register
+            colors: isDark
+                ? const [AppTheme.surface, AppTheme.primary]
+                : const [Color(0xFFFFF5F7), Color(0xFFFFE4E9)],
           ),
         ),
         child: SafeArea(
@@ -66,12 +72,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               children: [
                 const SizedBox(height: 16),
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                  // Đổi màu icon theo theme
+                  icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color),
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(height: 32),
 
-                if (_sent) _buildSuccessState() else _buildFormState(),
+                if (_sent) _buildSuccessState(theme) else _buildFormState(theme),
               ],
             ),
           ),
@@ -80,15 +87,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildFormState() {
+  Widget _buildFormState(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Đặt lại\nmật khẩu 🔑',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 30,
+          // Dùng textTheme để tự động đổi màu chữ Trắng <-> Đen
+          style: theme.textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.w800,
             height: 1.2,
           ),
@@ -96,7 +102,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 8),
         Text(
           'Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu',
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+          ),
         ),
         const SizedBox(height: 40),
         Form(
@@ -130,7 +138,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildSuccessState() {
+  Widget _buildSuccessState(ThemeData theme) {
     return Center(
       child: Column(
         children: [
@@ -147,16 +155,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 color: AppTheme.success, size: 48),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Email đã được gửi!',
-            style: TextStyle(
-                color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             'Kiểm tra hộp thư của bạn\nvà làm theo hướng dẫn',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+            ),
           ),
           const SizedBox(height: 40),
           SizedBox(
