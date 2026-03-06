@@ -1,5 +1,6 @@
 // lib/screens/user/user_home_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,23 +11,20 @@ import '../../models/user_model.dart';
 import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
 
-class UserHomeScreen extends StatefulWidget {
-  const UserHomeScreen({super.key});
+// ── Banner Widget riêng — chỉ rebuild mình nó khi slide ──────
+class _BannerSlider extends StatefulWidget {
+  const _BannerSlider();
 
   @override
-  State<UserHomeScreen> createState() => _UserHomeScreenState();
+  State<_BannerSlider> createState() => _BannerSliderState();
 }
 
-class _UserHomeScreenState extends State<UserHomeScreen>
-    with SingleTickerProviderStateMixin {
-  final _searchCtrl = TextEditingController();
-  String _searchQuery = '';
-  int _selectedFilter = 0; // 0=Tất cả, 1=Photographer, 2=Makeuper
-  int _bannerIndex = 0;
-  final PageController _bannerCtrl = PageController();
+class _BannerSliderState extends State<_BannerSlider> {
+  int _index = 0;
+  final _ctrl = PageController();
+  Timer? _timer;
 
-  // Banner data (hardcode - dễ đổi sang Firestore sau)
-  final List<Map<String, dynamic>> _banners = [
+  final _banners = const [
     {
       'title': 'Chụp ảnh kỷ niệm\n20% OFF',
       'subtitle': 'Ưu đãi cuối tuần',
@@ -53,26 +51,144 @@ class _UserHomeScreenState extends State<UserHomeScreen>
   @override
   void initState() {
     super.initState();
-    // Auto slide banner mỗi 3 giây
-    Future.delayed(Duration.zero, _startBannerAutoPlay);
-  }
-
-  void _startBannerAutoPlay() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 3));
-      if (!mounted) return false;
-      final next = (_bannerIndex + 1) % _banners.length;
-      _bannerCtrl.animateToPage(next,
+    // Dùng Timer thay Future.doWhile — không rebuild widget cha
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final next = (_index + 1) % _banners.length;
+      _ctrl.animateToPage(next,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeInOut);
-      return true;
     });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _ctrl,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemCount: _banners.length,
+            itemBuilder: (context, i) {
+              final b = _banners[i];
+              return Container(
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [b['color1'] as Color, b['color2'] as Color],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(b['subtitle'] as String,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 11)),
+                              const SizedBox(height: 3),
+                              Text(b['title'] as String,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.2)),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.4)),
+                                ),
+                                child: const Text('Đặt ngay',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(b['icon'] as IconData,
+                            color: Colors.white.withOpacity(0.2), size: 70),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            _banners.length,
+                (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: _index == i ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _index == i
+                    ? AppTheme.secondary
+                    : (isDark
+                    ? Colors.white24
+                    : Colors.grey.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Main Screen ───────────────────────────────────────────────
+class UserHomeScreen extends StatefulWidget {
+  const UserHomeScreen({super.key});
+
+  @override
+  State<UserHomeScreen> createState() => _UserHomeScreenState();
+}
+
+class _UserHomeScreenState extends State<UserHomeScreen> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+  int _selectedFilter = 0;
+
+  @override
+  void dispose() {
     _searchCtrl.dispose();
-    _bannerCtrl.dispose();
     super.dispose();
   }
 
@@ -88,7 +204,7 @@ class _UserHomeScreenState extends State<UserHomeScreen>
         slivers: [
           _buildAppBar(isDark, user),
           SliverToBoxAdapter(child: _buildSearchBar(isDark)),
-          SliverToBoxAdapter(child: _buildBannerSlider(isDark)),
+          const SliverToBoxAdapter(child: _BannerSlider()),
           SliverToBoxAdapter(child: _buildFilterTabs(isDark)),
           SliverToBoxAdapter(child: _buildProviderSection(isDark)),
           SliverToBoxAdapter(child: _buildPostsFeed(isDark)),
@@ -117,7 +233,7 @@ class _UserHomeScreenState extends State<UserHomeScreen>
                 color: Colors.white, size: 18),
           ),
           const SizedBox(width: 8),
-          Text('SnapBook',
+          Text('Noc Noc dang iu',
               style: TextStyle(
                 color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w800,
@@ -198,100 +314,6 @@ class _UserHomeScreenState extends State<UserHomeScreen>
               : null,
         ),
       ),
-    );
-  }
-
-  // ── Banner Slider ─────────────────────────────────────────
-  Widget _buildBannerSlider(bool isDark) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 150,
-          child: PageView.builder(
-            controller: _bannerCtrl,
-            onPageChanged: (i) => setState(() => _bannerIndex = i),
-            itemCount: _banners.length,
-            itemBuilder: (context, i) {
-              final b = _banners[i];
-              return Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [b['color1'] as Color, b['color2'] as Color],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(b['subtitle'] as String,
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 12)),
-                          const SizedBox(height: 6),
-                          Text(b['title'] as String,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.2)),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.4)),
-                            ),
-                            child: const Text('Đặt ngay',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(b['icon'] as IconData,
-                        color: Colors.white.withOpacity(0.25), size: 80),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        // Dot indicator
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            _banners.length,
-                (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _bannerIndex == i ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _bannerIndex == i
-                    ? AppTheme.secondary
-                    : (isDark
-                    ? Colors.white24
-                    : Colors.grey.withOpacity(0.3)),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
