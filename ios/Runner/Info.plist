@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>App cần vị trí để chọn địa điểm chụp hình</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>App cần vị trí để chọn địa điểm chụp hình</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Photo permission is required to upload an avatar</string>
 	<key>CFBundleDevelopmentRegion</key>

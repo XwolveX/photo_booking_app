@@ -1,5 +1,3 @@
-// lib/screens/user/user_home_screen.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
+import '../booking/booking_step1_providers.dart';
 
 // ── Banner Widget riêng — chỉ rebuild mình nó khi slide ──────
 class _BannerSlider extends StatefulWidget {
@@ -577,15 +576,14 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('🚀 Booking sắp ra mắt!'),
-                backgroundColor: AppTheme.secondary,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const BookingStep1Screen(),
+                ),
+              );
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 8),
