@@ -1,9 +1,7 @@
-// lib/screens/auth/splash_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
-import '../../theme/app_theme.dart';
 import 'login_screen.dart';
 import '../user/user_home_screen.dart';
 import '../photographer/photographer_home_screen.dart';
