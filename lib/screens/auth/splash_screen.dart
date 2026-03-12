@@ -1,9 +1,11 @@
+// lib/screens/auth/splash_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
+import '../../theme/app_theme.dart';
 import 'login_screen.dart';
-import '../user/user_home_screen.dart';
+import '../user/user_main_screen.dart';
 import '../photographer/photographer_home_screen.dart';
 import '../makeuper/makeuper_home_screen.dart';
 import '../../models/user_model.dart';
@@ -41,8 +43,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigate() {
-    if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
+    if (!mounted) return;
 
     if (!authProvider.isLoggedIn) {
       Navigator.pushReplacement(
@@ -52,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final role = authProvider.currentUser?.role;
+    final role = authProvider.currentUser!.role;
     Widget home;
     switch (role) {
       case UserRole.photographer:
@@ -62,7 +64,7 @@ class _SplashScreenState extends State<SplashScreen>
         home = const MakeuperHomeScreen();
         break;
       default:
-        home = const UserHomeScreen();
+        home = const UserMainScreen();
     }
 
     Navigator.pushReplacement(
@@ -79,13 +81,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // 1. Lấy theme hiện tại
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
-      // Nền tự động đổi: Navy hoặc Hồng Pastel
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: AppTheme.primary,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -101,42 +98,37 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      // Màu Primary tự đổi (Đỏ hồng ở Dark, Hồng nhạt ở Light)
-                      color: theme.colorScheme.primary,
+                      color: AppTheme.secondary,
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.4),
+                          color: AppTheme.secondary.withOpacity(0.4),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
                       ],
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.camera_alt_rounded,
-                      // Màu Icon tương phản với nền nút
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: Colors.white,
                       size: 52,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // TÊN APP
-                  Text(
+                  const Text(
                     'SnapBook',
-                    style: theme.textTheme.displayMedium?.copyWith(
-                      // Tự lấy màu textPrimary từ AppTheme
-                      color: theme.textTheme.displayMedium?.color,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // SLOGAN
                   Text(
                     'Kết nối - Sáng tạo - Tỏa sáng',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      // Tự lấy màu textSecondary (Mờ hơn)
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 14,
                       letterSpacing: 0.5,
                     ),
