@@ -7,7 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_button.dart';
-import '../user/user_home_screen.dart';
+import '../user/user_main_screen.dart';           // ← ĐÃ SỬA
 import '../photographer/photographer_home_screen.dart';
 import '../makeuper/makeuper_home_screen.dart';
 
@@ -30,7 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
-  int _currentStep = 0; // 0 = thông tin, 1 = chọn role
+  int _currentStep = 0;
   UserRole? _selectedRole;
 
   late AnimationController _slideController;
@@ -114,7 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         home = const MakeuperHomeScreen();
         break;
       default:
-        home = const UserHomeScreen();
+        home = const UserMainScreen();           // ← ĐÃ SỬA
     }
     Navigator.pushAndRemoveUntil(
       context,
@@ -299,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     _obscurePassword
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: theme.hintColor,
+                    color: Theme.of(context).hintColor,
                   ),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
@@ -321,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     _obscureConfirm
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: theme.hintColor,
+                    color: Theme.of(context).hintColor,
                   ),
                   onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
@@ -486,7 +486,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                       width: 2,
                     ),
                   ),
-                  child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                  child: isSelected
+                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      : null,
                 ),
               ],
             ),
@@ -519,7 +521,9 @@ class _RegisterScreenState extends State<RegisterScreen>
         children: [
           Icon(Icons.check_circle, color: color, size: 12),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.w500)),
         ],
       ),
     );

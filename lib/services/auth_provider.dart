@@ -10,15 +10,16 @@ class AuthProvider extends ChangeNotifier {
 
   UserModel? _currentUser;
   bool _isLoading = false;
+  bool _isInitialized = false; // ← THÊM
   String? _errorMessage;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized; // ← THÊM
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
 
   AuthProvider() {
-    // Lắng nghe thay đổi trạng thái auth
     _authService.authStateChanges.listen(_onAuthStateChanged);
   }
 
@@ -28,6 +29,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _currentUser = await _authService.getUserData(firebaseUser.uid);
     }
+    _isInitialized = true; // ← THÊM: Firebase đã restore session xong
     notifyListeners();
   }
 

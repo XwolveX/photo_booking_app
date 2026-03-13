@@ -22,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -37,14 +38,17 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
     _controller.forward();
-
-    // Sau 2.5s → điều hướng
-    Future.delayed(const Duration(milliseconds: 2500), _navigate);
   }
 
-  void _navigate() {
-    final authProvider = context.read<AuthProvider>();
-    if (!mounted) return;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _navigate(AuthProvider authProvider) {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
 
     if (!authProvider.isLoggedIn) {
       Navigator.pushReplacement(
@@ -74,13 +78,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
+    // Khi Firebase đã restore xong session → navigate
+    if (authProvider.isInitialized && !_hasNavigated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navigate(authProvider);
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.primary,
       body: Center(
@@ -93,7 +100,6 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo icon
                   Container(
                     width: 100,
                     height: 100,
@@ -133,6 +139,17 @@ class _SplashScreenState extends State<SplashScreen>
                       letterSpacing: 0.5,
                     ),
                   ),
+                  const SizedBox(height: 40),
+                  // Hiện loading nhỏ khi đang chờ Firebase restore session
+                  if (!authProvider.isInitialized)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white.withOpacity(0.4),
+                      ),
+                    ),
                 ],
               ),
             ),

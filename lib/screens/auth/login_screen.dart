@@ -7,7 +7,7 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_button.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import '../user/user_home_screen.dart';
+import '../user/user_main_screen.dart';           // ← ĐÃ SỬA
 import '../photographer/photographer_home_screen.dart';
 import '../makeuper/makeuper_home_screen.dart';
 import '../../services/theme_provider.dart';
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
         home = const MakeuperHomeScreen();
         break;
       default:
-        home = const UserHomeScreen();
+        home = const UserMainScreen();           // ← ĐÃ SỬA
     }
     Navigator.pushAndRemoveUntil(
       context,
@@ -78,15 +78,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe sự thay đổi theme
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
-      // ScaffoldBackgroundColor sẽ tự động lấy từ ThemeData đã cấu hình
       body: Stack(
         children: [
-          // Background Decor (Tự động đổi màu theo Theme)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -106,12 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 60),
-
-                  // Header
                   _buildHeader(isDark),
                   const SizedBox(height: 48),
-
-                  // Form
                   Form(
                     key: _formKey,
                     child: Column(
@@ -129,7 +122,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 16),
-
                         CustomTextField(
                           controller: _passwordCtrl,
                           label: 'Mật khẩu',
@@ -151,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-
-                        // Quên mật khẩu
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
@@ -164,14 +154,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Text(
                               'Quên mật khẩu?',
                               style: TextStyle(
-                                  color: isDark ? AppTheme.secondary : AppTheme.pinkAccent
-                              ),
+                                  color: isDark ? AppTheme.secondary : AppTheme.pinkAccent),
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
-
-                        // Nút đăng nhập
                         Consumer<AuthProvider>(
                           builder: (_, auth, __) => LoadingButton(
                             isLoading: auth.isLoading,
@@ -182,7 +169,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 32),
                   _buildDivider(isDark),
                   const SizedBox(height: 32),
@@ -193,7 +179,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // Nút gạt Dark/Light Mode ở góc trên bên phải
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 16,
@@ -234,8 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 )
-              ]
-          ),
+              ]),
           child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 30),
         ),
         const SizedBox(height: 24),
@@ -271,8 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'Chưa có tài khoản?',
             style: TextStyle(
                 color: (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.4),
-                fontSize: 13
-            ),
+                fontSize: 13),
           ),
         ),
         Expanded(child: Divider(color: color)),

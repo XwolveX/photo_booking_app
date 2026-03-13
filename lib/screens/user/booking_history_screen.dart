@@ -70,10 +70,28 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
 
   SliverAppBar _buildAppBar(bool isDark) {
     return SliverAppBar(
-      expandedHeight: 120,
       pinned: true,
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
+      title: Row(children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: _roleColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: const Icon(Icons.calendar_month_rounded, color: _roleColor, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Lịch sử đặt lịch',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ]),
       actions: [
         IconButton(
           icon: Icon(
@@ -90,46 +108,6 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
           onPressed: () => _logout(context),
         ),
       ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [AppTheme.surface, const Color(0xFF0A1A3A)]
-                  : [const Color(0xFFEEF4FF), const Color(0xFFD6E4FF)],
-            ),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 56, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Row(children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: _roleColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.calendar_month_rounded,
-                      color: _roleColor, size: 20),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Lịch sử đặt lịch',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ]),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -151,10 +129,8 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
           dividerColor: Colors.transparent,
           labelColor: Colors.white,
           unselectedLabelColor: isDark ? Colors.white38 : Colors.grey,
-          labelStyle: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w500),
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           tabs: _statusFilters.map((f) => Tab(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -198,13 +174,19 @@ class _BookingList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (uid.isEmpty) return const SizedBox.shrink();
 
-    Query query = FirebaseFirestore.instance
-        .collection('bookings')
-        .where('userId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true);
-
-    if (statusFilter != null) {
-      query = query.where('status', isEqualTo: statusFilter);
+    // KEY FIX: Tab "Tất cả" chỉ filter userId, KHÔNG dùng orderBy
+    // Tránh lỗi "requires an index" vì chưa có composite index
+    // Sort sẽ được thực hiện bằng Dart sau khi nhận data
+    Query query;
+    if (statusFilter == null) {
+      query = FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: uid);
+    } else {
+      query = FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: uid)
+          .where('status', isEqualTo: statusFilter);
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -225,7 +207,17 @@ class _BookingList extends StatelessWidget {
           );
         }
 
-        final docs = snap.data?.docs ?? [];
+        var docs = snap.data?.docs ?? [];
+
+        // Sort bằng Dart (descending by createdAt)
+        docs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+          final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+          return bTime.compareTo(aTime);
+        });
+
         if (docs.isEmpty) {
           return _EmptyState(
             icon: Icons.inbox_rounded,
@@ -243,11 +235,7 @@ class _BookingList extends StatelessWidget {
           itemCount: docs.length,
           itemBuilder: (context, i) {
             final data = docs[i].data() as Map<String, dynamic>;
-            return _BookingCard(
-              bookingId: docs[i].id,
-              data: data,
-              isDark: isDark,
-            );
+            return _BookingCard(bookingId: docs[i].id, data: data, isDark: isDark);
           },
         );
       },
@@ -261,28 +249,21 @@ class _BookingCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool isDark;
 
-  const _BookingCard({
-    required this.bookingId,
-    required this.data,
-    required this.isDark,
-  });
+  const _BookingCard({required this.bookingId, required this.data, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final status = data['status'] as String? ?? 'pending';
     final statusInfo = _getStatusInfo(status);
-
     final bookingDate = (data['bookingDate'] as Timestamp?)?.toDate();
     final dateStr = bookingDate != null
         ? '${_weekday(bookingDate.weekday)}, ${bookingDate.day}/${bookingDate.month}/${bookingDate.year}'
         : '---';
     final timeSlot = data['timeSlot'] as String? ?? '';
-
     final photographerName = data['photographerName'] as String?;
     final makeuperName = data['makeuperName'] as String?;
     final address = data['address'] as String? ?? '';
     final note = data['note'] as String?;
-
     final photographerPrice = (data['photographerPrice'] as num?)?.toInt() ?? 0;
     final makeuperPrice = (data['makeuperPrice'] as num?)?.toInt() ?? 0;
     final totalPrice = photographerPrice + makeuperPrice;
@@ -292,205 +273,100 @@ class _BookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppTheme.inputFill : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusInfo.color.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: statusInfo.color.withOpacity(0.07),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: statusInfo.color.withOpacity(0.3), width: 1.5),
+        boxShadow: [BoxShadow(color: statusInfo.color.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header status bar ──
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: statusInfo.color.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-            ),
-            child: Row(children: [
-              Icon(statusInfo.icon, color: statusInfo.color, size: 15),
-              const SizedBox(width: 6),
-              Text(
-                statusInfo.label,
-                style: TextStyle(
-                  color: statusInfo.color,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: statusInfo.color.withOpacity(0.08),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+          ),
+          child: Row(children: [
+            Icon(statusInfo.icon, color: statusInfo.color, size: 15),
+            const SizedBox(width: 6),
+            Text(statusInfo.label,
+                style: TextStyle(color: statusInfo.color, fontWeight: FontWeight.w700, fontSize: 12)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$dateStr  •  $timeSlot',
+              child: Text('$dateStr  •  $timeSlot',
                   style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.grey[600],
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ]),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Providers ──
-                if (photographerName != null) ...[
-                  _ProviderRow(
-                    icon: Icons.camera_alt_rounded,
-                    color: AppTheme.rolePhotographer,
-                    role: 'Photographer',
-                    name: photographerName,
-                    price: photographerPrice,
-                    isDark: isDark,
-                  ),
-                  if (makeuperName != null) const SizedBox(height: 8),
-                ],
-                if (makeuperName != null)
-                  _ProviderRow(
-                    icon: Icons.brush_rounded,
-                    color: AppTheme.roleMakeuper,
-                    role: 'Makeup Artist',
-                    name: makeuperName,
-                    price: makeuperPrice,
-                    isDark: isDark,
-                  ),
-
-                const SizedBox(height: 10),
-                Divider(
-                  color: isDark ? Colors.white10 : Colors.grey.withOpacity(0.12),
-                ),
-                const SizedBox(height: 8),
-
-                // ── Địa điểm ──
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.location_on_rounded,
-                      color: Colors.orange, size: 15),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      address,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isDark ? Colors.white60 : Colors.grey[700],
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ]),
-
-                // ── Ghi chú ──
-                if (note != null && note.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(Icons.edit_note_rounded, color: Colors.blue, size: 15),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        note,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.grey[600],
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ]),
-                ],
-
-                const SizedBox(height: 12),
-
-                // ── Footer: tổng tiền + action ──
-                Row(children: [
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(
-                      'Tổng tiền',
-                      style: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.grey,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      totalPrice > 0
-                          ? '${_formatPrice(totalPrice)}đ'
-                          : 'Chưa có giá',
-                      style: const TextStyle(
-                        color: AppTheme.roleUser,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ]),
-                  const Spacer(),
-
-                  // Action buttons tùy trạng thái
-                  if (status == 'pending')
-                    _OutlineButton(
-                      label: 'Hủy booking',
-                      color: Colors.red,
-                      isDark: isDark,
-                      onTap: () => _showCancelDialog(context, bookingId),
-                    ),
-                  if (status == 'confirmed')
-                    _OutlineButton(
-                      label: 'Liên hệ',
-                      color: AppTheme.roleUser,
-                      isDark: isDark,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('💬 Tính năng chat sắp ra mắt!'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                  if (status == 'completed')
-                    _OutlineButton(
-                      label: '⭐ Đánh giá',
-                      color: Colors.amber,
-                      isDark: isDark,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('⭐ Tính năng đánh giá sắp ra mắt!'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                ]),
-
-                // ── Trạng thái từng provider (nếu pending) ──
-                if (status == 'pending') ...[
-                  const SizedBox(height: 10),
-                  _buildProviderStatusChips(isDark),
-                ],
-              ],
+                      color: isDark ? Colors.white54 : Colors.grey[600],
+                      fontSize: 11, fontWeight: FontWeight.w500)),
             ),
-          ),
-        ],
-      ),
+          ]),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (photographerName != null) ...[
+              _ProviderRow(icon: Icons.camera_alt_rounded, color: AppTheme.rolePhotographer,
+                  role: 'Photographer', name: photographerName, price: photographerPrice, isDark: isDark),
+              if (makeuperName != null) const SizedBox(height: 8),
+            ],
+            if (makeuperName != null)
+              _ProviderRow(icon: Icons.brush_rounded, color: AppTheme.roleMakeuper,
+                  role: 'Makeup Artist', name: makeuperName, price: makeuperPrice, isDark: isDark),
+
+            const SizedBox(height: 10),
+            Divider(color: isDark ? Colors.white10 : Colors.grey.withOpacity(0.12)),
+            const SizedBox(height: 8),
+
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.location_on_rounded, color: Colors.orange, size: 15),
+              const SizedBox(width: 6),
+              Expanded(child: Text(address, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[700], fontSize: 12, height: 1.4))),
+            ]),
+
+            if (note != null && note.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 15),
+                const SizedBox(width: 6),
+                Expanded(child: Text(note, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 12, height: 1.4))),
+              ]),
+            ],
+
+            const SizedBox(height: 12),
+
+            Row(children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Tổng tiền', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+                const SizedBox(height: 2),
+                Text(totalPrice > 0 ? '${_formatPrice(totalPrice)}đ' : 'Chưa có giá',
+                    style: const TextStyle(color: AppTheme.roleUser, fontSize: 18, fontWeight: FontWeight.w800)),
+              ]),
+              const Spacer(),
+              if (status == 'pending')
+                _OutlineButton(label: 'Hủy booking', color: Colors.red, isDark: isDark,
+                    onTap: () => _showCancelDialog(context, bookingId)),
+              if (status == 'confirmed')
+                _OutlineButton(label: 'Liên hệ', color: AppTheme.roleUser, isDark: isDark,
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('💬 Tính năng chat sắp ra mắt!'), behavior: SnackBarBehavior.floating))),
+              if (status == 'completed')
+                _OutlineButton(label: '⭐ Đánh giá', color: Colors.amber, isDark: isDark,
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('⭐ Tính năng đánh giá sắp ra mắt!'), behavior: SnackBarBehavior.floating))),
+            ]),
+
+            if (status == 'pending') ...[
+              const SizedBox(height: 10),
+              _buildProviderStatusChips(isDark),
+            ],
+          ]),
+        ),
+      ]),
     );
   }
 
@@ -499,26 +375,13 @@ class _BookingCard extends StatelessWidget {
     final makeupStatus = data['makeuperStatus'] as String?;
     final hasPhoto = data['photographerId'] != null;
     final hasMakeup = data['makeuperId'] != null;
-
     if (!hasPhoto && !hasMakeup) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: 6,
-      children: [
-        if (hasPhoto)
-          _StatusChip(
-            label: 'Photographer: ${_providerStatusLabel(photoStatus)}',
-            color: _providerStatusColor(photoStatus),
-            isDark: isDark,
-          ),
-        if (hasMakeup)
-          _StatusChip(
-            label: 'Makeup: ${_providerStatusLabel(makeupStatus)}',
-            color: _providerStatusColor(makeupStatus),
-            isDark: isDark,
-          ),
-      ],
-    );
+    return Wrap(spacing: 6, children: [
+      if (hasPhoto) _StatusChip(label: 'Photographer: ${_providerStatusLabel(photoStatus)}',
+          color: _providerStatusColor(photoStatus), isDark: isDark),
+      if (hasMakeup) _StatusChip(label: 'Makeup: ${_providerStatusLabel(makeupStatus)}',
+          color: _providerStatusColor(makeupStatus), isDark: isDark),
+    ]);
   }
 
   String _providerStatusLabel(String? s) {
@@ -544,58 +407,32 @@ class _BookingCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? AppTheme.surface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Hủy booking?',
-          style: TextStyle(
-            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          'Bạn có chắc muốn hủy booking này không?',
-          style: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
-        ),
+        title: Text('Hủy booking?',
+            style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontWeight: FontWeight.w700)),
+        content: Text('Bạn có chắc muốn hủy booking này không?',
+            style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Không',
-                style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx),
+              child: Text('Không', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey))),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await FirebaseFirestore.instance
-                    .collection('bookings')
-                    .doc(bookingId)
-                    .update({'status': 'rejected'});
+                await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({'status': 'rejected'});
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('✅ Đã hủy booking'),
-                      backgroundColor: Colors.red,
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text('✅ Đã hủy booking'), backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
                 }
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e')),
-                  );
-                }
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Hủy booking',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: const Text('Hủy booking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -604,14 +441,10 @@ class _BookingCard extends StatelessWidget {
 
   _StatusInfo _getStatusInfo(String status) {
     switch (status) {
-      case 'confirmed':
-        return const _StatusInfo('Đã xác nhận', Icons.check_circle_rounded, Color(0xFF4CAF50));
-      case 'completed':
-        return const _StatusInfo('Hoàn thành', Icons.done_all_rounded, Colors.blue);
-      case 'rejected':
-        return const _StatusInfo('Đã hủy', Icons.cancel_rounded, Colors.red);
-      default:
-        return const _StatusInfo('Chờ xác nhận', Icons.pending_rounded, Colors.orange);
+      case 'confirmed': return const _StatusInfo('Đã xác nhận', Icons.check_circle_rounded, Color(0xFF4CAF50));
+      case 'completed': return const _StatusInfo('Hoàn thành', Icons.done_all_rounded, Colors.blue);
+      case 'rejected': return const _StatusInfo('Đã hủy', Icons.cancel_rounded, Colors.red);
+      default: return const _StatusInfo('Chờ xác nhận', Icons.pending_rounded, Colors.orange);
     }
   }
 
@@ -631,7 +464,6 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
-// ── Provider Row ────────────────────────────────────────────────────────────
 class _ProviderRow extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -640,56 +472,22 @@ class _ProviderRow extends StatelessWidget {
   final int price;
   final bool isDark;
 
-  const _ProviderRow({
-    required this.icon,
-    required this.color,
-    required this.role,
-    required this.name,
-    required this.price,
-    required this.isDark,
-  });
+  const _ProviderRow({required this.icon, required this.color, required this.role,
+    required this.name, required this.price, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color, size: 18),
-      ),
+      Container(width: 36, height: 36,
+          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: color, size: 18)),
       const SizedBox(width: 10),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-            name,
-            style: TextStyle(
-              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-          Text(
-            role,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ]),
-      ),
-      if (price > 0)
-        Text(
-          '${_fmt(price)}đ',
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.grey[700],
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+        Text(role, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+      ])),
+      if (price > 0) Text('${_fmt(price)}đ',
+          style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600)),
     ]);
   }
 
@@ -704,19 +502,13 @@ class _ProviderRow extends StatelessWidget {
   }
 }
 
-// ── Outline Button ──────────────────────────────────────────────────────────
 class _OutlineButton extends StatelessWidget {
   final String label;
   final Color color;
   final bool isDark;
   final VoidCallback onTap;
 
-  const _OutlineButton({
-    required this.label,
-    required this.color,
-    required this.isDark,
-    required this.onTap,
-  });
+  const _OutlineButton({required this.label, required this.color, required this.isDark, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -725,57 +517,33 @@ class _OutlineButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.4)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+            color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.4))),
+        child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
       ),
     );
   }
 }
 
-// ── Status Chip ─────────────────────────────────────────────────────────────
 class _StatusChip extends StatelessWidget {
   final String label;
   final Color color;
   final bool isDark;
 
-  const _StatusChip({
-    required this.label,
-    required this.color,
-    required this.isDark,
-  });
+  const _StatusChip({required this.label, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+          color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withOpacity(0.3))),
+      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }
 
-// ── Empty State ─────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -783,58 +551,27 @@ class _EmptyState extends StatelessWidget {
   final Color color;
   final bool isDark;
 
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.isDark,
-  });
+  const _EmptyState({required this.icon, required this.title, required this.subtitle, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color.withOpacity(0.6), size: 36),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: isDark ? Colors.white38 : Colors.grey,
-                fontSize: 13,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 72, height: 72,
+              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: color.withOpacity(0.6), size: 36)),
+          const SizedBox(height: 16),
+          Text(title, style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 16, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 13, height: 1.4), textAlign: TextAlign.center),
+        ]),
       ),
     );
   }
 }
 
-// ── Tab Bar Delegate ─────────────────────────────────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   final bool isDark;
@@ -843,21 +580,14 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: isDark ? AppTheme.primary : AppTheme.lightBg,
-      child: tabBar,
-    );
+    return Container(color: isDark ? AppTheme.primary : AppTheme.lightBg, child: tabBar);
   }
 
-  @override
-  double get maxExtent => 56;
-  @override
-  double get minExtent => 56;
-  @override
-  bool shouldRebuild(_TabBarDelegate old) => old.isDark != isDark;
+  @override double get maxExtent => 56;
+  @override double get minExtent => 56;
+  @override bool shouldRebuild(_TabBarDelegate old) => old.isDark != isDark;
 }
 
-// ── Data classes ────────────────────────────────────────────────────────────
 class _StatusFilter {
   final String label;
   final String? status;
