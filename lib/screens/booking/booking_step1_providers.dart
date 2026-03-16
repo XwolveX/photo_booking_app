@@ -7,11 +7,13 @@ import 'booking_step2_datetime.dart';
 class BookingStep1Screen extends StatefulWidget {
   final Map<String, dynamic>? preSelectedPhotographer;
   final Map<String, dynamic>? preSelectedMakeuper;
+  final bool hideBackButton; // ← THÊM MỚI
 
   const BookingStep1Screen({
     super.key,
     this.preSelectedPhotographer,
     this.preSelectedMakeuper,
+    this.hideBackButton = false, // mặc định false → vào từ home vẫn có nút back
   });
 
   @override
@@ -100,11 +102,20 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen>
     return AppBar(
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_rounded, color: isDark ? Colors.white : AppTheme.lightTextPrimary, size: 20),
+      // ── Ẩn nút back khi vào từ nav ──────────────────────────
+      automaticallyImplyLeading: !widget.hideBackButton,
+      leading: widget.hideBackButton
+          ? null
+          : IconButton(
+        icon: Icon(Icons.arrow_back_ios_rounded,
+            color: isDark ? Colors.white : AppTheme.lightTextPrimary, size: 20),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Text('Đặt lịch', style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontWeight: FontWeight.w700, fontSize: 17)),
+      title: Text('Đặt lịch',
+          style: TextStyle(
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 17)),
       centerTitle: true,
     );
   }

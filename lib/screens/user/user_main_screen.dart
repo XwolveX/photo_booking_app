@@ -7,6 +7,7 @@ import 'user_home_screen.dart';
 import 'post_feed_screen.dart';
 import 'booking_history_screen.dart';
 import 'chat_list_screen.dart';
+import '../booking/booking_step1_providers.dart';
 
 class UserMainScreen extends StatefulWidget {
   const UserMainScreen({super.key});
@@ -22,6 +23,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
 
   final List<Widget> _screens = const [
     UserHomeScreen(),
+    BookingStep1Screen(hideBackButton: true), // ← ẩn nút back khi vào từ nav
     PostFeedScreen(),
     BookingHistoryScreen(),
     ChatListScreen(),
@@ -81,10 +83,20 @@ class _UserMainScreenState extends State<UserMainScreen> {
                 onTap: _onTap,
               ),
               _NavItem(
+                icon: Icons.calendar_today_rounded,
+                iconOutlined: Icons.calendar_today_outlined,
+                label: 'Booking',
+                index: 1,
+                currentIndex: _currentIndex,
+                color: _roleColor,
+                isDark: isDark,
+                onTap: _onTap,
+              ),
+              _NavItem(
                 icon: Icons.article_rounded,
                 iconOutlined: Icons.article_outlined,
                 label: 'Bài viết',
-                index: 1,
+                index: 2,
                 currentIndex: _currentIndex,
                 color: _roleColor,
                 isDark: isDark,
@@ -94,7 +106,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
                 icon: Icons.calendar_month_rounded,
                 iconOutlined: Icons.calendar_month_outlined,
                 label: 'Lịch sử',
-                index: 2,
+                index: 3,
                 currentIndex: _currentIndex,
                 color: _roleColor,
                 isDark: isDark,
@@ -104,7 +116,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
                 icon: Icons.chat_bubble_rounded,
                 iconOutlined: Icons.chat_bubble_outline_rounded,
                 label: 'Chat',
-                index: 3,
+                index: 4,
                 currentIndex: _currentIndex,
                 color: _roleColor,
                 isDark: isDark,
@@ -159,13 +171,15 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Indicator dot + icon
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+                  color: isSelected
+                      ? color.withOpacity(0.12)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
@@ -185,7 +199,7 @@ class _NavItem extends StatelessWidget {
                       : (isDark ? Colors.white38 : Colors.grey[400]),
                   fontSize: 10,
                   fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.w400,
+                  isSelected ? FontWeight.w700 : FontWeight.w400,
                 ),
                 child: Text(label),
               ),
