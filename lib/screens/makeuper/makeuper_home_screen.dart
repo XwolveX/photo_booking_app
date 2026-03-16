@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
 import '../shared/create_post_screen.dart';
+import '../shared/manage_services_screen.dart';
 
 class MakeuperHomeScreen extends StatefulWidget {
   const MakeuperHomeScreen({super.key});
@@ -45,7 +46,7 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
           SliverToBoxAdapter(child: _buildSectionTitle('📋 Booking chờ xác nhận', isDark)),
           SliverToBoxAdapter(child: _buildBookingList(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('💄 Dịch vụ của tôi', isDark)),
-          SliverToBoxAdapter(child: _buildServicesList(isDark)),
+          SliverToBoxAdapter(child: _buildServicesSection(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('📅 Lịch trong tuần', isDark)),
           SliverToBoxAdapter(child: _buildWeekCalendar(isDark)),
           SliverToBoxAdapter(child: _buildSectionTitle('📝 Bài viết của tôi', isDark)),
@@ -333,8 +334,25 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
           .collection('bookings')
           .where('makeuperId', isEqualTo: uid)
           .where('makeuperStatus', isEqualTo: 'pending')
+          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.error.withOpacity(0.4)),
+              ),
+              child: Text('Lỗi: ${snap.error}',
+                  style: const TextStyle(color: AppTheme.error, fontSize: 12)),
+            ),
+          );
+        }
+
         if (snap.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(20),
@@ -682,65 +700,88 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
   }
 
 
-  // ── Services List ──────────────────────────────────────────
-  Widget _buildServicesList(bool isDark) {
-    final services = [
-      {'name': 'Makeup cô dâu', 'price': '500.000đ', 'icon': Icons.favorite_rounded},
-      {'name': 'Makeup dự tiệc', 'price': '300.000đ', 'icon': Icons.celebration_rounded},
-      {'name': 'Makeup hàng ngày', 'price': '150.000đ', 'icon': Icons.wb_sunny_rounded},
-      {'name': 'Chụp hình + Makeup', 'price': '800.000đ', 'icon': Icons.camera_alt_rounded},
-    ];
+  // ── Services Section (Firestore) ───────────────────────────
+  Widget _buildServicesSection(bool isDark, String uid) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          ...services.map((s) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.inputFill : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _roleColor.withOpacity(0.15)),
-            ),
-            child: Row(children: [
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('services')
+            .where('providerId', isEqualTo: uid)
+            .snapshots(),
+        builder: (context, snap) {
+          final services = (snap.data?.docs ?? [])
+              .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
+              .toList();
+
+          return Column(children: [
+            if (services.isEmpty)
               Container(
-                width: 40, height: 40,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                    color: _roleColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10)),
-                child: Icon(s['icon'] as IconData, color: _roleColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(s['name'] as String,
-                    style: TextStyle(
+                  color: isDark ? AppTheme.inputFill : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.2)),
+                ),
+                child: Column(children: [
+                  Icon(Icons.design_services_rounded, size: 32, color: _roleColor.withOpacity(0.3)),
+                  const SizedBox(height: 8),
+                  Text('Chưa có dịch vụ nào',
+                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 13)),
+                ]),
+              )
+            else
+              ...services.map((s) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.inputFill : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.15)),
+                ),
+                child: Row(children: [
+                  Container(width: 38, height: 38,
+                      decoration: BoxDecoration(color: _roleColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.design_services_rounded, color: _roleColor, size: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(s['name'] ?? '', style: TextStyle(
                         color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                        fontWeight: FontWeight.w600, fontSize: 14)),
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                    if ((s['description'] ?? '').isNotEmpty)
+                      Text(s['description'], maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+                  ])),
+                  Text(
+                    (s['price'] as num? ?? 0) > 0 ? '${_formatPrice((s['price'] as num).toInt())}đ' : 'Liên hệ',
+                    style: TextStyle(color: _roleColor, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ]),
+              )),
+
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManageServicesScreen())),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _roleColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.3)),
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.settings_rounded, color: _roleColor, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Quản lý dịch vụ',
+                      style: TextStyle(color: _roleColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
               ),
-              Text(s['price'] as String,
-                  style: TextStyle(color: _roleColor, fontWeight: FontWeight.w700, fontSize: 14)),
-            ]),
-          )),
-          GestureDetector(
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✏️ Tính năng chỉnh sửa dịch vụ sắp ra mắt!'))),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: _roleColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _roleColor.withOpacity(0.3)),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.add_rounded, color: _roleColor, size: 18),
-                const SizedBox(width: 6),
-                Text('Thêm dịch vụ',
-                    style: TextStyle(color: _roleColor, fontWeight: FontWeight.w600, fontSize: 13)),
-              ]),
             ),
-          ),
-        ],
+          ]);
+        },
       ),
     );
   }

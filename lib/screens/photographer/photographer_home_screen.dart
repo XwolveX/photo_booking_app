@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
 import '../shared/create_post_screen.dart';
+import '../shared/manage_services_screen.dart';
 
 class PhotographerHomeScreen extends StatefulWidget {
   const PhotographerHomeScreen({super.key});
@@ -43,16 +44,9 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
           SliverToBoxAdapter(child: _buildStatsRow(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildIncomeCard(isDark)),
           SliverToBoxAdapter(child: _buildSectionTitle('📋 Booking chờ xác nhận', isDark)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text(
-                'DEBUG uid: ${user?.uid ?? "NULL"}',
-                style: TextStyle(fontSize: 10, color: Colors.orange, fontFamily: 'monospace'),
-              ),
-            ),
-          ),
           SliverToBoxAdapter(child: _buildBookingList(isDark, user?.uid ?? '')),
+          SliverToBoxAdapter(child: _buildSectionTitle('🛠️ Dịch vụ của tôi', isDark)),
+          SliverToBoxAdapter(child: _buildServicesSection(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('📅 Lịch trong tuần', isDark)),
           SliverToBoxAdapter(child: _buildWeekCalendar(isDark)),
           SliverToBoxAdapter(child: _buildSectionTitle('📝 Bài viết của tôi', isDark)),
@@ -703,6 +697,94 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
         );
       }
     }
+  }
+
+  // ── Services Section ───────────────────────────────────────
+  Widget _buildServicesSection(bool isDark, String uid) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('services')
+            .where('providerId', isEqualTo: uid)
+            .snapshots(),
+        builder: (context, snap) {
+          final services = (snap.data?.docs ?? [])
+              .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
+              .toList();
+
+          return Column(children: [
+            // Danh sách dịch vụ
+            if (services.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.inputFill : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.2)),
+                ),
+                child: Column(children: [
+                  Icon(Icons.design_services_rounded, size: 32, color: _roleColor.withOpacity(0.3)),
+                  const SizedBox(height: 8),
+                  Text('Chưa có dịch vụ nào',
+                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 13)),
+                ]),
+              )
+            else
+              ...services.map((s) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.inputFill : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.15)),
+                ),
+                child: Row(children: [
+                  Container(width: 38, height: 38,
+                      decoration: BoxDecoration(color: _roleColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.design_services_rounded, color: _roleColor, size: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(s['name'] ?? '', style: TextStyle(
+                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                    if ((s['description'] ?? '').isNotEmpty)
+                      Text(s['description'], maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+                  ])),
+                  Text(
+                    (s['price'] as num? ?? 0) > 0 ? '${_formatPrice((s['price'] as num).toInt())}đ' : 'Liên hệ',
+                    style: TextStyle(color: _roleColor, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ]),
+              )),
+
+            const SizedBox(height: 10),
+            // Nút quản lý
+            GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManageServicesScreen())),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _roleColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _roleColor.withOpacity(0.3)),
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.settings_rounded, color: _roleColor, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Quản lý dịch vụ',
+                      style: TextStyle(color: _roleColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
+              ),
+            ),
+          ]);
+        },
+      ),
+    );
   }
 
   // ── Week Calendar ──────────────────────────────────────────
