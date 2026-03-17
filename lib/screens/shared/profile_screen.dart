@@ -1,4 +1,8 @@
 // lib/screens/shared/profile_screen.dart
+// Cập nhật:
+//  • Tab "Được gắn thẻ" hiển thị bài accepted
+//  • Badge pending tags trên icon thông báo
+//  • Navigate sang TagRequestsScreen
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +15,7 @@ import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
 import '../user/booking_history_screen.dart';
 import '../shared/create_post_screen.dart';
+import '../shared/tag_requests_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
 
-  // ── Edit state ────────────────────────────────────────────
   bool _isEditing = false;
   bool _isSaving = false;
   late TextEditingController _nameCtrl;
@@ -49,7 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────
   Color _roleColor(UserRole role) {
     switch (role) {
       case UserRole.photographer:
@@ -81,7 +84,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     ));
   }
 
-  // ── Save profile ──────────────────────────────────────────
   Future<void> _saveProfile() async {
     if (_nameCtrl.text.trim().isEmpty) {
       _snack('Họ tên không được để trống', AppTheme.error);
@@ -106,23 +108,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // ── Logout ────────────────────────────────────────────────
   Future<void> _confirmLogout() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? AppTheme.surface : Colors.white,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Đăng xuất?',
             style: TextStyle(
-                color:
-                isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w700)),
         content: Text('Bạn sẽ cần đăng nhập lại để tiếp tục.',
-            style: TextStyle(
-                color: isDark ? Colors.white54 : Colors.grey)),
+            style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -134,15 +132,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
               minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Đăng xuất',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700)),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -152,14 +147,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (mounted) {
         Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(
-                builder: (_) => const LoginScreen()),
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (_) => false);
       }
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -186,16 +179,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         final color = _roleColor(user.role);
 
         return Scaffold(
-          backgroundColor:
-          isDark ? AppTheme.primary : AppTheme.lightBg,
-          // ── FAB: tạo bài viết ──
+          backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
           floatingActionButton: !_isEditing
               ? FloatingActionButton(
-            onPressed: () => Navigator.push(
-                context,
+            onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
-                    builder: (_) =>
-                    const CreatePostScreen())),
+                    builder: (_) => const CreatePostScreen())),
             backgroundColor: color,
             shape: const CircleBorder(),
             child: const Icon(Icons.add_rounded,
@@ -213,82 +202,76 @@ class _ProfileScreenState extends State<ProfileScreen>
   // ══════════════════════════════════════════════════════════
   // PROFILE VIEW
   // ══════════════════════════════════════════════════════════
-  Widget _buildProfileView(
-      bool isDark, UserModel user, Color color) {
+  Widget _buildProfileView(bool isDark, UserModel user, Color color) {
     return NestedScrollView(
       headerSliverBuilder: (_, __) => [
         _buildAppBar(isDark, user, color),
         _buildHeaderInfo(isDark, user, color),
-        _buildTabBarSliver(isDark, color),
+        _buildTabBarSliver(isDark, color, user.uid),
       ],
       body: TabBarView(
         controller: _tabCtrl,
         children: [
-          _PostsGrid(
-              uid: user.uid,
-              color: color,
-              isDark: isDark),
-          _TaggedGrid(isDark: isDark, color: color),
+          _PostsGrid(uid: user.uid, color: color, isDark: isDark),
+          _TaggedGrid(uid: user.uid, color: color, isDark: isDark),
         ],
       ),
     );
   }
 
-  // ── AppBar (pinned, chứa username + actions) ──────────────
-  SliverAppBar _buildAppBar(
-      bool isDark, UserModel user, Color color) {
+  // ── AppBar ────────────────────────────────────────────────
+  SliverAppBar _buildAppBar(bool isDark, UserModel user, Color color) {
     return SliverAppBar(
       pinned: true,
-      floating: false,
-      backgroundColor:
-      isDark ? AppTheme.primary : AppTheme.lightBg,
+      backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
       elevation: 0,
       automaticallyImplyLeading: false,
-      title: Text(
-        user.fullName,
-        style: TextStyle(
-          color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-          fontWeight: FontWeight.w700,
-          fontSize: 17,
-        ),
-      ),
+      title: Text(user.fullName,
+          style: TextStyle(
+            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          )),
       actions: [
-        // Nút chuyển sang Booking History
+        // Booking history
         IconButton(
           tooltip: 'Lịch sử booking',
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(Icons.calendar_month_rounded,
-                  color: isDark
-                      ? Colors.white
-                      : AppTheme.lightTextPrimary,
-                  size: 24),
-              // badge dot
-              Positioned(
-                top: -1,
-                right: -1,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: isDark
-                            ? AppTheme.primary
-                            : AppTheme.lightBg,
-                        width: 1.5),
-                  ),
+          icon: Stack(clipBehavior: Clip.none, children: [
+            Icon(Icons.calendar_month_rounded,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                size: 24),
+            Positioned(
+              top: -1,
+              right: -1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: isDark ? AppTheme.primary : AppTheme.lightBg,
+                      width: 1.5),
                 ),
               ),
-            ],
-          ),
-          onPressed: () => Navigator.push(
-              context,
+            ),
+          ]),
+          onPressed: () => Navigator.push(context,
               MaterialPageRoute(
-                  builder: (_) =>
-                  const BookingHistoryScreen())),
+                  builder: (_) => const BookingHistoryScreen())),
+        ),
+        // Tag notifications (badge pending count)
+        PendingTagBadge(
+          uid: user.uid,
+          child: IconButton(
+            tooltip: 'Thẻ gắn tag',
+            icon: Icon(Icons.person_pin_rounded,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                size: 24),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const TagRequestsScreen())),
+          ),
         ),
         // Theme toggle
         IconButton(
@@ -299,22 +282,16 @@ class _ProfileScreenState extends State<ProfileScreen>
             color: isDark ? Colors.amber : Colors.orange,
             size: 22,
           ),
-          onPressed: () =>
-              context.read<ThemeProvider>().toggleTheme(),
+          onPressed: () => context.read<ThemeProvider>().toggleTheme(),
         ),
-        // Menu: chỉnh sửa / đăng xuất
+        // Menu
         PopupMenuButton<String>(
           icon: Icon(Icons.menu_rounded,
-              color: isDark
-                  ? Colors.white
-                  : AppTheme.lightTextPrimary),
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary),
           color: isDark ? AppTheme.surface : Colors.white,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           onSelected: (v) {
-            if (v == 'edit') {
-              setState(() => _isEditing = true);
-            }
+            if (v == 'edit') setState(() => _isEditing = true);
             if (v == 'logout') _confirmLogout();
           },
           itemBuilder: (_) => [
@@ -329,147 +306,112 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  PopupMenuItem<String> _menuItem(bool isDark, String value,
-      IconData icon, String label, Color color) {
+  PopupMenuItem<String> _menuItem(
+      bool isDark, String value, IconData icon, String label, Color color) {
     return PopupMenuItem(
       value: value,
       child: Row(children: [
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 10),
         Text(label,
-            style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: value == 'logout'
-                    ? FontWeight.w600
-                    : FontWeight.normal)),
+            style: TextStyle(color: color, fontSize: 14,
+                fontWeight: value == 'logout' ? FontWeight.w600 : FontWeight.normal)),
       ]),
     );
   }
 
-  // ── Header: Avatar + Stats + Bio + Buttons ────────────────
+  // ── Header info ────────────────────────────────────────────
   SliverToBoxAdapter _buildHeaderInfo(
       bool isDark, UserModel user, Color color) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Row 1: Avatar + Stats ──
-              Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildAvatar(user, color, isDark),
-                    const SizedBox(width: 28),
-                    Expanded(
-                      child: _buildStats(isDark, user, color),
-                    ),
-                  ]),
-              const SizedBox(height: 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Avatar + Stats
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            _buildAvatar(user, color, isDark),
+            const SizedBox(width: 28),
+            Expanded(child: _buildStats(isDark, user, color)),
+          ]),
+          const SizedBox(height: 12),
 
-              // ── Row 2: Name + Role badge ──
-              Row(children: [
-                Text(user.fullName,
+          // Name + role badge
+          Row(children: [
+            Text(user.fullName,
+                style: TextStyle(
+                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(_roleIcon(user.role), color: color, size: 10),
+                const SizedBox(width: 3),
+                Text(user.roleDisplayName,
                     style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : AppTheme.lightTextPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_roleIcon(user.role),
-                            color: color, size: 10),
-                        const SizedBox(width: 3),
-                        Text(user.roleDisplayName,
-                            style: TextStyle(
-                                color: color,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600)),
-                      ]),
-                ),
+                        color: color, fontSize: 10, fontWeight: FontWeight.w600)),
               ]),
+            ),
+          ]),
 
-              // ── Row 3: Bio ──
-              if (user.bio != null && user.bio!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(user.bio!,
-                    style: TextStyle(
-                        color: isDark
-                            ? Colors.white70
-                            : AppTheme.lightTextSecondary,
-                        fontSize: 13,
-                        height: 1.4)),
-              ] else ...[
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: () => setState(() => _isEditing = true),
-                  child: Text('+ Thêm tiểu sử',
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500)),
-                ),
-              ],
+          // Bio
+          const SizedBox(height: 4),
+          if (user.bio != null && user.bio!.isNotEmpty)
+            Text(user.bio!,
+                style: TextStyle(
+                    color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                    fontSize: 13,
+                    height: 1.4))
+          else
+            GestureDetector(
+              onTap: () => setState(() => _isEditing = true),
+              child: Text('+ Thêm tiểu sử',
+                  style: TextStyle(
+                      color: color, fontSize: 13, fontWeight: FontWeight.w500)),
+            ),
 
-              // ── Row 4: Email & Phone ──
-              const SizedBox(height: 4),
-              Row(children: [
-                Icon(Icons.email_outlined,
-                    size: 11,
-                    color: isDark
-                        ? Colors.white38
-                        : Colors.grey[400]),
-                const SizedBox(width: 4),
-                Text(user.email,
-                    style: TextStyle(
-                        color: isDark
-                            ? Colors.white38
-                            : Colors.grey[500],
-                        fontSize: 12)),
-              ]),
-              if (user.phone.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Row(children: [
-                  Icon(Icons.phone_outlined,
-                      size: 11,
-                      color: isDark
-                          ? Colors.white38
-                          : Colors.grey[400]),
-                  const SizedBox(width: 4),
-                  Text(user.phone,
-                      style: TextStyle(
-                          color: isDark
-                              ? Colors.white38
-                              : Colors.grey[500],
-                          fontSize: 12)),
-                ]),
-              ],
-
-              const SizedBox(height: 12),
-
-              // ── Row 5: Action Buttons ──
-              _buildActionButtons(isDark, user, color),
-              const SizedBox(height: 4),
+          // Contact
+          const SizedBox(height: 4),
+          Row(children: [
+            Icon(Icons.email_outlined,
+                size: 11,
+                color: isDark ? Colors.white38 : Colors.grey[400]),
+            const SizedBox(width: 4),
+            Text(user.email,
+                style: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.grey[500],
+                    fontSize: 12)),
+          ]),
+          if (user.phone.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Row(children: [
+              Icon(Icons.phone_outlined,
+                  size: 11,
+                  color: isDark ? Colors.white38 : Colors.grey[400]),
+              const SizedBox(width: 4),
+              Text(user.phone,
+                  style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.grey[500],
+                      fontSize: 12)),
             ]),
+          ],
+          const SizedBox(height: 12),
+
+          // Action buttons
+          _buildActionButtons(isDark, user, color),
+          const SizedBox(height: 4),
+        ]),
       ),
     );
   }
 
-  Widget _buildAvatar(
-      UserModel user, Color color, bool isDark) {
+  Widget _buildAvatar(UserModel user, Color color, bool isDark) {
     return Stack(children: [
-      // Gradient ring (Instagram style)
       Container(
         width: 86,
         height: 86,
@@ -484,28 +426,23 @@ class _ProfileScreenState extends State<ProfileScreen>
         padding: const EdgeInsets.all(2.5),
         child: Container(
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark ? AppTheme.primary : Colors.white,
-          ),
+              shape: BoxShape.circle,
+              color: isDark ? AppTheme.primary : Colors.white),
           padding: const EdgeInsets.all(2),
           child: ClipOval(
             child: user.avatarUrl != null
-                ? Image.network(user.avatarUrl!,
-                fit: BoxFit.cover)
+                ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
                 : Container(
                 color: color.withOpacity(0.12),
-                child: Icon(_roleIcon(user.role),
-                    color: color, size: 38)),
+                child: Icon(_roleIcon(user.role), color: color, size: 38)),
           ),
         ),
       ),
-      // Camera button
       Positioned(
         bottom: 0,
         right: 0,
         child: GestureDetector(
-          onTap: () => _snack(
-              '📷 Upload ảnh sắp ra mắt!', Colors.blue),
+          onTap: () => _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
           child: Container(
             width: 26,
             height: 26,
@@ -513,14 +450,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               color: color,
               shape: BoxShape.circle,
               border: Border.all(
-                  color:
-                  isDark ? AppTheme.primary : Colors.white,
-                  width: 2),
-              boxShadow: [
-                BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 6)
-              ],
+                  color: isDark ? AppTheme.primary : Colors.white, width: 2),
+              boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6)],
             ),
             child: const Icon(Icons.camera_alt_rounded,
                 color: Colors.white, size: 12),
@@ -530,8 +461,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     ]);
   }
 
-  Widget _buildStats(
-      bool isDark, UserModel user, Color color) {
+  Widget _buildStats(bool isDark, UserModel user, Color color) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
@@ -553,36 +483,22 @@ class _ProfileScreenState extends State<ProfileScreen>
             final bookings = bookSnap.data?.docs ?? [];
             final posts = postSnap.data?.docs ?? [];
             final completed = bookings
-                .where((d) =>
-            (d.data() as Map)['status'] ==
-                'completed')
+                .where((d) => (d.data() as Map)['status'] == 'completed')
                 .length;
             final rating = user.rating ?? 0.0;
 
             return Row(
-              mainAxisAlignment:
-              MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                // Bài viết (chỉ provider có bài)
-                _StatCol(
-                  value: '${posts.length}',
-                  label: 'Bài viết',
-                  isDark: isDark,
-                ),
-                _StatCol(
-                  value: '${bookings.length}',
-                  label: 'Booking',
-                  isDark: isDark,
-                ),
+                _StatCol(value: '${posts.length}', label: 'Bài viết', isDark: isDark),
+                _StatCol(value: '${bookings.length}', label: 'Booking', isDark: isDark),
                 _StatCol(
                   value: completed > 0
                       ? '$completed'
                       : rating > 0
                       ? rating.toStringAsFixed(1)
                       : '—',
-                  label: completed > 0
-                      ? 'Hoàn thành'
-                      : 'Đánh giá',
+                  label: completed > 0 ? 'Hoàn thành' : 'Đánh giá',
                   isDark: isDark,
                   icon: rating > 0 && completed == 0
                       ? Icons.star_rounded
@@ -596,10 +512,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildActionButtons(
-      bool isDark, UserModel user, Color color) {
+  Widget _buildActionButtons(bool isDark, UserModel user, Color color) {
     return Row(children: [
-      // Chỉnh sửa trang cá nhân
       Expanded(
         child: _OutlineBtn(
           label: 'Chỉnh sửa trang cá nhân',
@@ -608,93 +522,101 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       ),
       const SizedBox(width: 8),
-      // Lịch sử Booking ← nút chuyển trang
       Expanded(
         child: _OutlineBtn(
           label: '🗓 Lịch sử Booking',
           isDark: isDark,
           color: color,
-          onTap: () => Navigator.push(
-              context,
+          onTap: () => Navigator.push(context,
               MaterialPageRoute(
-                  builder: (_) =>
-                  const BookingHistoryScreen())),
+                  builder: (_) => const BookingHistoryScreen())),
         ),
       ),
       const SizedBox(width: 8),
-      // Share
       _SquareBtn(
         icon: Icons.person_add_alt_1_outlined,
         isDark: isDark,
-        onTap: () =>
-            _snack('📤 Tính năng sắp ra mắt!', Colors.blue),
+        onTap: () => _snack('📤 Tính năng sắp ra mắt!', Colors.blue),
       ),
     ]);
   }
 
-  // ── Tab Bar (Bài viết / Tagged) ───────────────────────────
+  // ── TabBar (Bài viết | Được gắn thẻ) ──────────────────────
   SliverPersistentHeader _buildTabBarSliver(
-      bool isDark, Color color) {
+      bool isDark, Color color, String uid) {
     return SliverPersistentHeader(
       pinned: true,
       delegate: _TabHeaderDelegate(
-        isDark: isDark,
-        color: color,
+        bgColor: isDark ? AppTheme.primary : AppTheme.lightBg,
         child: TabBar(
           controller: _tabCtrl,
           labelColor: color,
-          unselectedLabelColor:
-          isDark ? Colors.white24 : Colors.grey[300],
+          unselectedLabelColor: isDark ? Colors.white24 : Colors.grey[300],
           indicatorColor: color,
           indicatorWeight: 1.5,
           indicatorSize: TabBarIndicatorSize.tab,
           dividerColor: isDark
               ? Colors.white.withOpacity(0.08)
               : Colors.grey.withOpacity(0.15),
-          tabs: const [
-            Tab(
-              child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.grid_view_rounded, size: 18),
-                    SizedBox(width: 5),
-                    Text('Bài viết',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+          tabs: [
+            const Tab(
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.grid_view_rounded, size: 17),
+                SizedBox(width: 5),
+                Text('Bài viết',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              ]),
             ),
+            // Tab "Được gắn thẻ" với badge count
             Tab(
-              child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.person_pin_rounded, size: 18),
-                    SizedBox(width: 5),
-                    Text('Được gắn thẻ',
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('post_tags')
+                    .where('taggedUserId', isEqualTo: uid)
+                    .where('status', isEqualTo: 'accepted')
+                    .snapshots(),
+                builder: (context, snap) {
+                  final count = snap.data?.docs.length ?? 0;
+                  return Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.person_pin_rounded, size: 17),
+                    const SizedBox(width: 5),
+                    const Text('Được gắn thẻ',
                         style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    if (count > 0) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('$count',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ]);
+                },
+              ),
             ),
           ],
         ),
-        bgColor:
-        isDark ? AppTheme.primary : AppTheme.lightBg,
       ),
     );
   }
 
   // ══════════════════════════════════════════════════════════
-  // EDIT VIEW  (thay thế toàn bộ body khi _isEditing = true)
+  // EDIT VIEW
   // ══════════════════════════════════════════════════════════
-  Widget _buildEditView(
-      bool isDark, UserModel user, Color color) {
+  Widget _buildEditView(bool isDark, UserModel user, Color color) {
     return Scaffold(
-      backgroundColor:
-      isDark ? AppTheme.primary : AppTheme.lightBg,
+      backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
       appBar: AppBar(
-        backgroundColor:
-        isDark ? AppTheme.surface : Colors.white,
+        backgroundColor: isDark ? AppTheme.surface : Colors.white,
         elevation: 0,
         leading: TextButton(
           onPressed: () => setState(() => _isEditing = false),
@@ -705,8 +627,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         leadingWidth: 64,
         title: const Text('Chỉnh sửa trang cá nhân',
-            style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 15)),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         centerTitle: true,
         actions: [
           TextButton(
@@ -716,8 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.secondary))
+                    strokeWidth: 2, color: AppTheme.secondary))
                 : const Text('Lưu',
                 style: TextStyle(
                     color: AppTheme.secondary,
@@ -729,7 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // ── Avatar editor ──
+          // Avatar editor
           Center(
             child: Stack(children: [
               Container(
@@ -738,22 +658,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [color, color.withOpacity(0.4)],
-                  ),
+                      colors: [color, color.withOpacity(0.4)]),
                 ),
                 padding: const EdgeInsets.all(3),
                 child: Container(
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDark
-                        ? AppTheme.primary
-                        : Colors.white,
-                  ),
+                      shape: BoxShape.circle,
+                      color: isDark ? AppTheme.primary : Colors.white),
                   padding: const EdgeInsets.all(2),
                   child: ClipOval(
                     child: user.avatarUrl != null
-                        ? Image.network(user.avatarUrl!,
-                        fit: BoxFit.cover)
+                        ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
                         : Container(
                         color: color.withOpacity(0.12),
                         child: Icon(_roleIcon(user.role),
@@ -765,9 +680,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 bottom: 0,
                 right: 0,
                 child: GestureDetector(
-                  onTap: () => _snack(
-                      '📷 Upload ảnh sắp ra mắt!',
-                      Colors.blue),
+                  onTap: () => _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
                   child: Container(
                     width: 30,
                     height: 30,
@@ -775,15 +688,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                       color: color,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: isDark
-                              ? AppTheme.primary
-                              : Colors.white,
+                          color: isDark ? AppTheme.primary : Colors.white,
                           width: 2),
                     ),
-                    child: const Icon(
-                        Icons.camera_alt_rounded,
-                        color: Colors.white,
-                        size: 14),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white, size: 14),
                   ),
                 ),
               ),
@@ -794,55 +703,33 @@ class _ProfileScreenState extends State<ProfileScreen>
             onPressed: () =>
                 _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
             child: Text('Đổi ảnh đại diện',
-                style: TextStyle(
-                    color: color, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: color, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 16),
 
-          // ── Fields ──
+          // Editable fields
           _EditCard(isDark: isDark, children: [
-            _FieldRow(
-              isDark: isDark,
-              color: color,
-              label: 'Họ và tên',
-              controller: _nameCtrl,
-              keyboardType: TextInputType.name,
-            ),
+            _FieldRow(isDark: isDark, color: color,
+                label: 'Họ và tên', controller: _nameCtrl,
+                keyboardType: TextInputType.name),
             _Divider(isDark: isDark),
-            _FieldRow(
-              isDark: isDark,
-              color: color,
-              label: 'Số điện thoại',
-              controller: _phoneCtrl,
-              keyboardType: TextInputType.phone,
-            ),
+            _FieldRow(isDark: isDark, color: color,
+                label: 'Số điện thoại', controller: _phoneCtrl,
+                keyboardType: TextInputType.phone),
             _Divider(isDark: isDark),
-            _FieldRow(
-              isDark: isDark,
-              color: color,
-              label: 'Tiểu sử',
-              controller: _bioCtrl,
-              maxLines: 4,
-              hint: 'Giới thiệu bản thân...',
-            ),
+            _FieldRow(isDark: isDark, color: color,
+                label: 'Tiểu sử', controller: _bioCtrl,
+                maxLines: 4, hint: 'Giới thiệu bản thân...'),
           ]),
           const SizedBox(height: 16),
 
-          // ── Read-only ──
+          // Read-only
           _EditCard(isDark: isDark, children: [
-            _ReadRow(
-              isDark: isDark,
-              label: 'Email',
-              value: user.email,
-              note: 'Không thể thay đổi',
-            ),
+            _ReadRow(isDark: isDark, label: 'Email',
+                value: user.email, note: 'Không thể thay đổi'),
             _Divider(isDark: isDark),
-            _ReadRow(
-              isDark: isDark,
-              label: 'Vai trò',
-              value: user.roleDisplayName,
-              note: 'Cố định',
-            ),
+            _ReadRow(isDark: isDark, label: 'Vai trò',
+                value: user.roleDisplayName, note: 'Cố định'),
           ]),
           const SizedBox(height: 32),
         ]),
@@ -852,17 +739,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 }
 
 // ══════════════════════════════════════════════════════════
-// POSTS GRID  (Instagram-style 3 col)
+// POSTS GRID (3 col, Instagram-style)
 // ══════════════════════════════════════════════════════════
 class _PostsGrid extends StatelessWidget {
   final String uid;
   final Color color;
   final bool isDark;
 
-  const _PostsGrid(
-      {required this.uid,
-        required this.color,
-        required this.isDark});
+  const _PostsGrid({required this.uid, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -874,9 +758,7 @@ class _PostsGrid extends StatelessWidget {
           .snapshots(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return Center(
-              child:
-              CircularProgressIndicator(color: color));
+          return Center(child: CircularProgressIndicator(color: color));
         }
         final docs = snap.data?.docs ?? [];
         if (docs.isEmpty) {
@@ -888,11 +770,9 @@ class _PostsGrid extends StatelessWidget {
             color: color,
           );
         }
-
         return GridView.builder(
           padding: const EdgeInsets.all(1),
-          gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 1.5,
             mainAxisSpacing: 1.5,
@@ -900,12 +780,8 @@ class _PostsGrid extends StatelessWidget {
           itemCount: docs.length,
           itemBuilder: (_, i) {
             final post = PostModel.fromFirestore(
-                docs[i].data() as Map<String, dynamic>,
-                docs[i].id);
-            return _PostThumbnail(
-                post: post,
-                color: color,
-                isDark: isDark);
+                docs[i].data() as Map<String, dynamic>, docs[i].id);
+            return _PostThumbnail(post: post, color: color, isDark: isDark);
           },
         );
       },
@@ -919,92 +795,150 @@ class _PostThumbnail extends StatelessWidget {
   final bool isDark;
 
   const _PostThumbnail(
-      {required this.post,
-        required this.color,
-        required this.isDark});
+      {required this.post, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // TODO: navigate to post detail
-      },
-      child: Stack(fit: StackFit.expand, children: [
-        // Cover hoặc placeholder
-        post.coverImageUrl != null
-            ? Image.network(post.coverImageUrl!,
-            fit: BoxFit.cover)
-            : Container(
-          color: color.withOpacity(0.1),
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.article_rounded,
-                    color: color.withOpacity(0.4),
-                    size: 28),
-              ]),
-        ),
-        // Gradient overlay
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.transparent,
-                ],
-              ),
+    return Stack(fit: StackFit.expand, children: [
+      post.coverImageUrl != null
+          ? Image.network(post.coverImageUrl!, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder())
+          : _placeholder(),
+      Positioned(
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          height: 30,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Colors.black.withOpacity(0.5), Colors.transparent],
             ),
           ),
         ),
-        // Like count
-        Positioned(
-          bottom: 5,
-          left: 6,
-          child: Row(children: [
-            const Icon(Icons.favorite_rounded,
-                color: Colors.white, size: 12),
-            const SizedBox(width: 3),
-            Text('${post.likeCount}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ]),
-    );
+      ),
+      Positioned(
+        bottom: 5,
+        left: 6,
+        child: Row(children: [
+          const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
+          const SizedBox(width: 3),
+          Text('${post.likeCount}',
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ]);
   }
-}
 
-// ── Tagged tab placeholder ────────────────────────────────
-class _TaggedGrid extends StatelessWidget {
-  final bool isDark;
-  final Color color;
-
-  const _TaggedGrid(
-      {required this.isDark, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return _EmptyGrid(
-      icon: Icons.person_pin_rounded,
-      title: 'Không có bài viết được gắn thẻ',
-      subtitle: 'Khi ai đó gắn thẻ bạn, bài viết sẽ xuất hiện ở đây',
-      isDark: isDark,
-      color: color,
+  Widget _placeholder() {
+    return Container(
+      color: color.withOpacity(0.1),
+      child: Icon(Icons.article_rounded,
+          color: color.withOpacity(0.3), size: 28),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════
-// SMALL SHARED WIDGETS
+// TAGGED GRID — hiển thị bài accepted
+// ══════════════════════════════════════════════════════════
+class _TaggedGrid extends StatelessWidget {
+  final String uid;
+  final Color color;
+  final bool isDark;
+
+  const _TaggedGrid(
+      {required this.uid, required this.color, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('post_tags')
+          .where('taggedUserId', isEqualTo: uid)
+          .where('status', isEqualTo: 'accepted')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, tagSnap) {
+        if (tagSnap.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator(color: color));
+        }
+
+        final tagDocs = tagSnap.data?.docs ?? [];
+        if (tagDocs.isEmpty) {
+          return _EmptyGrid(
+            icon: Icons.person_pin_rounded,
+            title: 'Chưa có bài nào',
+            subtitle: 'Bài viết bạn được gắn thẻ và chấp nhận sẽ xuất hiện ở đây',
+            isDark: isDark,
+            color: color,
+          );
+        }
+
+        // Fetch post data for each tag
+        final postIds = tagDocs.map((d) => d['postId'] as String).toList();
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('posts')
+              .where(FieldPath.documentId, whereIn: postIds)
+              .snapshots(),
+          builder: (context, postSnap) {
+            final posts = postSnap.data?.docs ?? [];
+            if (posts.isEmpty) {
+              return _EmptyGrid(
+                icon: Icons.person_pin_rounded,
+                title: 'Không tìm thấy bài viết',
+                subtitle: 'Bài viết có thể đã bị xóa',
+                isDark: isDark,
+                color: color,
+              );
+            }
+
+            return GridView.builder(
+              padding: const EdgeInsets.all(1),
+              gridDelegate:
+              const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 1.5,
+                mainAxisSpacing: 1.5,
+              ),
+              itemCount: posts.length,
+              itemBuilder: (_, i) {
+                final post = PostModel.fromFirestore(
+                    posts[i].data() as Map<String, dynamic>, posts[i].id);
+                return Stack(fit: StackFit.expand, children: [
+                  _PostThumbnail(post: post, color: color, isDark: isDark),
+                  // Tag indicator
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.person_pin_rounded,
+                          color: Colors.white, size: 12),
+                    ),
+                  ),
+                ]);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SHARED WIDGETS
 // ══════════════════════════════════════════════════════════
 
 class _StatCol extends StatelessWidget {
@@ -1013,12 +947,8 @@ class _StatCol extends StatelessWidget {
   final bool isDark;
   final IconData? icon;
 
-  const _StatCol({
-    required this.value,
-    required this.label,
-    required this.isDark,
-    this.icon,
-  });
+  const _StatCol(
+      {required this.value, required this.label, required this.isDark, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -1030,17 +960,14 @@ class _StatCol extends StatelessWidget {
         ],
         Text(value,
             style: TextStyle(
-                color: isDark
-                    ? Colors.white
-                    : AppTheme.lightTextPrimary,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontSize: 17,
                 fontWeight: FontWeight.w800)),
       ]),
       const SizedBox(height: 2),
       Text(label,
           style: TextStyle(
-              color: isDark ? Colors.white38 : Colors.grey,
-              fontSize: 11)),
+              color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
     ]);
   }
 }
@@ -1051,12 +978,8 @@ class _OutlineBtn extends StatelessWidget {
   final VoidCallback onTap;
   final Color? color;
 
-  const _OutlineBtn({
-    required this.label,
-    required this.isDark,
-    required this.onTap,
-    this.color,
-  });
+  const _OutlineBtn(
+      {required this.label, required this.isDark, required this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1086,9 +1009,7 @@ class _OutlineBtn extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: c ??
-                      (isDark
-                          ? Colors.white
-                          : AppTheme.lightTextPrimary),
+                      (isDark ? Colors.white : AppTheme.lightTextPrimary),
                   fontSize: 12,
                   fontWeight: FontWeight.w600)),
         ),
@@ -1103,9 +1024,7 @@ class _SquareBtn extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SquareBtn(
-      {required this.icon,
-        required this.isDark,
-        required this.onTap});
+      {required this.icon, required this.isDark, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1126,9 +1045,7 @@ class _SquareBtn extends StatelessWidget {
         ),
         child: Icon(icon,
             size: 16,
-            color: isDark
-                ? Colors.white70
-                : AppTheme.lightTextPrimary),
+            color: isDark ? Colors.white70 : AppTheme.lightTextPrimary),
       ),
     );
   }
@@ -1141,36 +1058,27 @@ class _EmptyGrid extends StatelessWidget {
   final bool isDark;
   final Color color;
 
-  const _EmptyGrid({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.isDark,
-    required this.color,
-  });
+  const _EmptyGrid(
+      {required this.icon, required this.title, required this.subtitle,
+        required this.isDark, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
-        child:
-        Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
-                shape: BoxShape.circle),
-            child: Icon(icon,
-                color: color.withOpacity(0.35), size: 34),
+                color: color.withOpacity(0.08), shape: BoxShape.circle),
+            child: Icon(icon, color: color.withOpacity(0.35), size: 34),
           ),
           const SizedBox(height: 16),
           Text(title,
               style: TextStyle(
-                  color: isDark
-                      ? Colors.white
-                      : AppTheme.lightTextPrimary,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
@@ -1186,14 +1094,11 @@ class _EmptyGrid extends StatelessWidget {
   }
 }
 
-// ── Edit page widgets ─────────────────────────────────────
-
 class _EditCard extends StatelessWidget {
   final bool isDark;
   final List<Widget> children;
 
-  const _EditCard(
-      {required this.isDark, required this.children});
+  const _EditCard({required this.isDark, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -1220,58 +1125,44 @@ class _FieldRow extends StatelessWidget {
   final int maxLines;
   final String? hint;
 
-  const _FieldRow({
-    required this.isDark,
-    required this.color,
-    required this.label,
-    required this.controller,
-    this.keyboardType,
-    this.maxLines = 1,
-    this.hint,
-  });
+  const _FieldRow(
+      {required this.isDark, required this.color, required this.label,
+        required this.controller, this.keyboardType, this.maxLines = 1, this.hint});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 100,
-              child: Text(label,
-                  style: TextStyle(
-                      color: isDark
-                          ? Colors.white
-                          : AppTheme.lightTextPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        SizedBox(
+          width: 100,
+          child: Text(label,
+              style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500)),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            style: TextStyle(
+                color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                fontSize: 14),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                  color: isDark ? Colors.white24 : Colors.grey[400],
+                  fontSize: 13),
+              border: InputBorder.none,
+              filled: false,
+              contentPadding:
+              const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
             ),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                keyboardType: keyboardType,
-                maxLines: maxLines,
-                style: TextStyle(
-                    color: isDark
-                        ? Colors.white70
-                        : AppTheme.lightTextSecondary,
-                    fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: hint,
-                  hintStyle: TextStyle(
-                      color:
-                      isDark ? Colors.white24 : Colors.grey[400],
-                      fontSize: 13),
-                  border: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 12, horizontal: 0),
-                ),
-              ),
-            ),
-          ]),
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -1282,41 +1173,31 @@ class _ReadRow extends StatelessWidget {
   final String value;
   final String? note;
 
-  const _ReadRow({
-    required this.isDark,
-    required this.label,
-    required this.value,
-    this.note,
-  });
+  const _ReadRow(
+      {required this.isDark, required this.label, required this.value, this.note});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
         SizedBox(
           width: 100,
           child: Text(label,
               style: TextStyle(
-                  color: isDark
-                      ? Colors.white
-                      : AppTheme.lightTextPrimary,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500)),
         ),
         Expanded(
           child: Text(value,
               style: TextStyle(
-                  color: isDark
-                      ? Colors.white38
-                      : Colors.grey[500],
+                  color: isDark ? Colors.white38 : Colors.grey[500],
                   fontSize: 14)),
         ),
         if (note != null)
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withOpacity(0.06)
@@ -1325,8 +1206,7 @@ class _ReadRow extends StatelessWidget {
             ),
             child: Text(note!,
                 style: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.grey,
-                    fontSize: 10)),
+                    color: isDark ? Colors.white38 : Colors.grey, fontSize: 10)),
           ),
       ]),
     );
@@ -1348,31 +1228,20 @@ class _Divider extends StatelessWidget {
   }
 }
 
-// ── SliverPersistentHeader delegate cho TabBar ────────────
 class _TabHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-  final bool isDark;
-  final Color color;
   final Color bgColor;
 
-  const _TabHeaderDelegate({
-    required this.child,
-    required this.isDark,
-    required this.color,
-    required this.bgColor,
-  });
+  const _TabHeaderDelegate({required this.child, required this.bgColor});
 
   @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool _) {
-    return Container(color: bgColor, child: child);
-  }
+  Widget build(BuildContext context, double shrinkOffset, bool _) =>
+      Container(color: bgColor, child: child);
 
   @override
   double get maxExtent => 44;
   @override
   double get minExtent => 44;
   @override
-  bool shouldRebuild(_TabHeaderDelegate old) =>
-      old.isDark != isDark || old.color != color;
+  bool shouldRebuild(_TabHeaderDelegate old) => old.bgColor != bgColor;
 }
