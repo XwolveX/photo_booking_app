@@ -1,9 +1,3 @@
-// lib/screens/shared/profile_screen.dart
-// Cập nhật:
-//  • Tab "Được gắn thẻ" hiển thị bài accepted
-//  • Badge pending tags trên icon thông báo
-//  • Navigate sang TagRequestsScreen
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

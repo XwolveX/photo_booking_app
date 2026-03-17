@@ -13,6 +13,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
+
   runApp(
     // Đưa các Provider lên cấp cao nhất để toàn app có thể truy cập
     MultiProvider(
