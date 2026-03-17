@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import 'user_home_screen.dart';
 import 'post_feed_screen.dart';
-import 'booking_history_screen.dart';
 import 'chat_list_screen.dart';
 import '../booking/booking_step1_providers.dart';
+import '../shared/profile_screen.dart';
 
 class UserMainScreen extends StatefulWidget {
   const UserMainScreen({super.key});
@@ -22,11 +22,11 @@ class _UserMainScreenState extends State<UserMainScreen> {
   static const _roleColor = AppTheme.roleUser;
 
   final List<Widget> _screens = const [
-    UserHomeScreen(),
-    BookingStep1Screen(hideBackButton: true), // ← ẩn nút back khi vào từ nav
-    PostFeedScreen(),
-    BookingHistoryScreen(),
-    ChatListScreen(),
+    UserHomeScreen(),                          // 0 — Trang chủ
+    BookingStep1Screen(hideBackButton: true),  // 1 — Booking
+    PostFeedScreen(),                          // 2 — Bài viết
+    ChatListScreen(),                          // 3 — Chat
+    ProfileScreen(),                           // 4 — Tôi
   ];
 
   @override
@@ -103,9 +103,9 @@ class _UserMainScreenState extends State<UserMainScreen> {
                 onTap: _onTap,
               ),
               _NavItem(
-                icon: Icons.calendar_month_rounded,
-                iconOutlined: Icons.calendar_month_outlined,
-                label: 'Lịch sử',
+                icon: Icons.chat_bubble_rounded,
+                iconOutlined: Icons.chat_bubble_outline_rounded,
+                label: 'Chat',
                 index: 3,
                 currentIndex: _currentIndex,
                 color: _roleColor,
@@ -113,9 +113,9 @@ class _UserMainScreenState extends State<UserMainScreen> {
                 onTap: _onTap,
               ),
               _NavItem(
-                icon: Icons.chat_bubble_rounded,
-                iconOutlined: Icons.chat_bubble_outline_rounded,
-                label: 'Chat',
+                icon: Icons.person_rounded,
+                iconOutlined: Icons.person_outline_rounded,
+                label: 'Tôi',
                 index: 4,
                 currentIndex: _currentIndex,
                 color: _roleColor,
@@ -174,8 +174,8 @@ class _NavItem extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? color.withOpacity(0.12)
