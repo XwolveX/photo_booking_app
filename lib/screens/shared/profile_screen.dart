@@ -10,6 +10,7 @@ import '../auth/login_screen.dart';
 import '../user/booking_history_screen.dart';
 import '../shared/create_post_screen.dart';
 import '../shared/tag_requests_screen.dart';
+import 'Post_Detail_Screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -793,45 +794,64 @@ class _PostThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(fit: StackFit.expand, children: [
-      post.coverImageUrl != null
-          ? Image.network(post.coverImageUrl!, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholder())
-          : _placeholder(),
-      Positioned(
-        bottom: 0,
-        left: 0,
-        right: 0,
-        child: Container(
-          height: 30,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PostDetailScreen(
+              post: post,
+              heroTag: 'profile_post_${post.id}',
+            ),
+          ),
+        );
+      },
+      child: Stack(fit: StackFit.expand, children: [
+        Hero(
+          tag: 'profile_post_${post.id}',
+          child: post.coverImageUrl != null
+              ? Image.network(
+            post.coverImageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _placeholder(),
+          )
+              : _placeholder(),
+        ),
+        // Gradient overlay bottom
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: Container(
+            height: 30,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+              ),
             ),
           ),
         ),
-      ),
-      Positioned(
-        bottom: 5,
-        left: 6,
-        child: Row(children: [
-          const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
-          const SizedBox(width: 3),
-          Text('${post.likeCount}',
+        // Like count
+        Positioned(
+          bottom: 5, left: 6,
+          child: Row(children: [
+            const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
+            const SizedBox(width: 3),
+            Text(
+              '${post.likeCount}',
               style: const TextStyle(
-                  color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-        ]),
-      ),
-    ]);
+                  color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ]),
+        ),
+      ]),
+    );
   }
 
   Widget _placeholder() {
     return Container(
       color: color.withOpacity(0.1),
-      child: Icon(Icons.article_rounded,
-          color: color.withOpacity(0.3), size: 28),
+      child: Icon(Icons.article_rounded, color: color.withOpacity(0.3), size: 28),
     );
   }
 }

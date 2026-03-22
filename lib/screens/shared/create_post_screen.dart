@@ -1,5 +1,3 @@
-// lib/screens/shared/create_post_screen.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -94,7 +92,9 @@ class _CreatePostScreenState extends State<CreatePostScreen>
       final ref = FirebaseStorage.instance.ref().child(path);
       final task = await ref.putFile(file);
       return await task.ref.getDownloadURL();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ Upload error: $e'); // xem log này
+      if (mounted) _snack('Upload lỗi: $e', AppTheme.error);
       return null;
     }
   }
