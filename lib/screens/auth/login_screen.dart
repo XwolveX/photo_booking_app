@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
         home = const MakeuperHomeScreen();
         break;
       default:
-        home = const UserMainScreen();           // ← ĐÃ SỬA
+        home = const UserMainScreen();
     }
     Navigator.pushAndRemoveUntil(
       context,
@@ -207,20 +207,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-              color: isDark ? AppTheme.secondary : AppTheme.pinkAccent,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: (isDark ? AppTheme.secondary : AppTheme.pinkAccent).withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                )
-              ]),
-          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 30),
+        SizedBox(
+          width: 120,
+          height: 120,
+          child: Image.asset(
+            'assets/icons/smee_logo.png',
+            fit: BoxFit.contain,
+          ),
         ),
         const SizedBox(height: 24),
         Text(

@@ -18,7 +18,6 @@ void main() async {
   }
 
   runApp(
-    // Đưa các Provider lên cấp cao nhất để toàn app có thể truy cập
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()), // Quản lý giao diện
@@ -34,7 +33,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sử dụng context.watch để MaterialApp tự động rebuild khi ThemeProvider thay đổi
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
