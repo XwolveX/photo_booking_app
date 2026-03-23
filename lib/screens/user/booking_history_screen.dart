@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_provider.dart';
+import '../../services/chat_service.dart';
 import '../../services/theme_provider.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import '../chat/chat_screen.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -351,6 +353,28 @@ class _BookingCard extends StatelessWidget {
                 _OutlineButton(label: 'Hủy booking', color: Colors.red, isDark: isDark,
                     onTap: () => _showCancelDialog(context, bookingId)),
               if (status == 'confirmed')
+                _OutlineButton(
+                  label: 'Nhắn tin',
+                  color: AppTheme.roleUser,
+                  isDark: isDark,
+                  onTap: () async {
+                    final me = context.read<AuthProvider>().currentUser!;
+                    final chatId = await ChatService.getOrCreateChat(
+                      me: me,
+                      otherId: data['photographerId'] ?? data['makeuperId'],
+                      otherName: data['photographerName'] ?? data['makeuperName'],
+                      otherRole: data['photographerId'] != null ? 'photographer' : 'makeuper',
+                    );
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        chatId: chatId,
+                        otherUserId: data['photographerId'] ?? data['makeuperId'],
+                        otherUserName: data['photographerName'] ?? data['makeuperName'],
+                        otherUserRole: data['photographerId'] != null ? 'photographer' : 'makeuper',
+                      ),
+                    ));
+                  },
+                ),
                 _OutlineButton(label: 'Liên hệ', color: AppTheme.roleUser, isDark: isDark,
                     onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('💬 Tính năng chat sắp ra mắt!'), behavior: SnackBarBehavior.floating))),

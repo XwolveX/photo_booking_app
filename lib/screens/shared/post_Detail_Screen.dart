@@ -1,6 +1,3 @@
-// lib/screens/shared/post_detail_screen.dart
-// Chi tiết bài viết: ảnh gallery, like, comment realtime
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -45,6 +42,54 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _commentCtrl.dispose();
     _imagePageCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Helper: lấy màu theo role ──────────────────────────────
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'photographer':
+        return AppTheme.rolePhotographer;
+      case 'makeuper':
+        return AppTheme.roleMakeuper;
+      default:
+        return AppTheme.roleUser;
+    }
+  }
+
+  // ── Helper: lấy label theo role ────────────────────────────
+  String _getRoleLabel(String role) {
+    switch (role) {
+      case 'photographer':
+        return 'Photographer';
+      case 'makeuper':
+        return 'Makeup Artist';
+      default:
+        return 'Khách hàng';
+    }
+  }
+
+  // ── Helper: lấy icon theo role ─────────────────────────────
+  IconData _getRoleIcon(String role) {
+    switch (role) {
+      case 'photographer':
+        return Icons.camera_alt_rounded;
+      case 'makeuper':
+        return Icons.brush_rounded;
+      default:
+        return Icons.person_rounded;
+    }
+  }
+
+  // ── Helper: gradient theo role ─────────────────────────────
+  List<Color> _getRoleGradient(String role) {
+    switch (role) {
+      case 'photographer':
+        return [AppTheme.secondary, const Color(0xFFFF6B8A)];
+      case 'makeuper':
+        return [AppTheme.roleMakeuper, const Color(0xFF9C27B0)];
+      default:
+        return [AppTheme.roleUser, const Color(0xFF0288D1)];
+    }
   }
 
   Future<void> _checkLiked() async {
@@ -144,9 +189,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final post = widget.post;
-    final isPhoto = post.authorRole == 'photographer';
-    final roleColor =
-    isPhoto ? AppTheme.rolePhotographer : AppTheme.roleMakeuper;
+    final roleColor = _getRoleColor(post.authorRole);
 
     // Gộp tất cả ảnh
     final allImages = [
@@ -155,12 +198,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     ];
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppTheme.primary : const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? AppTheme.primary : const Color(0xFFF8F9FA),
       body: Column(
         children: [
           // ── AppBar ──
-          _buildAppBar(isDark, post, roleColor, isPhoto),
+          _buildAppBar(isDark, post, roleColor),
 
           // ── Content ──
           Expanded(
@@ -169,12 +211,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 // Image gallery
                 if (allImages.isNotEmpty)
                   SliverToBoxAdapter(
-                      child: _buildImageGallery(
-                          allImages, isDark, post)),
+                      child: _buildImageGallery(allImages, isDark, post)),
 
                 // Post info
                 SliverToBoxAdapter(
-                    child: _buildPostInfo(isDark, post, roleColor, isPhoto)),
+                    child: _buildPostInfo(isDark, post, roleColor)),
 
                 // Comments title
                 SliverToBoxAdapter(
@@ -214,8 +255,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildAppBar(
-      bool isDark, PostModel post, Color roleColor, bool isPhoto) {
+  Widget _buildAppBar(bool isDark, PostModel post, Color roleColor) {
     return Container(
       color: isDark ? AppTheme.surface : Colors.white,
       child: SafeArea(
@@ -229,17 +269,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            // Author
+            // Author avatar với gradient đúng role
             Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isPhoto
-                      ? [AppTheme.secondary, const Color(0xFFFF6B8A)]
-                      : [
-                    AppTheme.roleMakeuper,
-                    const Color(0xFF9C27B0)
-                  ],
+                  colors: _getRoleGradient(post.authorRole),
                 ),
                 shape: BoxShape.circle,
               ),
@@ -257,9 +292,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       : null,
                   child: post.authorAvatar == null
                       ? Icon(
-                    isPhoto
-                        ? Icons.camera_alt_rounded
-                        : Icons.brush_rounded,
+                    _getRoleIcon(post.authorRole),
                     color: roleColor,
                     size: 14,
                   )
@@ -281,10 +314,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         fontSize: 14,
                       ),
                     ),
+                    // ← SỬA: dùng _getRoleLabel thay vì hardcode
                     Text(
-                      isPhoto ? 'Photographer' : 'Makeup Artist',
-                      style:
-                      TextStyle(color: roleColor, fontSize: 11),
+                      _getRoleLabel(post.authorRole),
+                      style: TextStyle(color: roleColor, fontSize: 11),
                     ),
                   ]),
             ),
@@ -302,7 +335,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget _buildImageGallery(
       List<String> allImages, bool isDark, PostModel post) {
     if (allImages.length == 1) {
-      // Single image
       return GestureDetector(
         onTap: () => _openImageViewer(0),
         child: Hero(
@@ -343,14 +375,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               child: i == 0 && widget.heroTag != null
                   ? Hero(
                 tag: widget.heroTag!,
-                child: Image.network(allImages[i],
-                    fit: BoxFit.cover),
+                child:
+                Image.network(allImages[i], fit: BoxFit.cover),
               )
                   : Image.network(allImages[i], fit: BoxFit.cover),
             ),
           ),
         ),
-        // Dots
         Positioned(
           bottom: 10,
           left: 0,
@@ -381,12 +412,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
         ),
-        // Counter badge
         Positioned(
           top: 10,
           right: 10,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.55),
               borderRadius: BorderRadius.circular(16),
@@ -400,12 +431,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
         ),
-        // Tap to zoom hint
         Positioned(
           bottom: 30,
           right: 12,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.4),
               borderRadius: BorderRadius.circular(12),
@@ -422,25 +453,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildPostInfo(
-      bool isDark, PostModel post, Color roleColor, bool isPhoto) {
+  Widget _buildPostInfo(bool isDark, PostModel post, Color roleColor) {
     return Container(
       color: isDark ? AppTheme.inputFill.withOpacity(0.3) : Colors.white,
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Action bar
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
             child: Row(children: [
-              // Like
               GestureDetector(
                 onTap: _toggleLike,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                      scale: anim, child: child),
+                  transitionBuilder: (child, anim) =>
+                      ScaleTransition(scale: anim, child: child),
                   child: Icon(
                     _liked
                         ? Icons.favorite_rounded
@@ -454,7 +482,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              // Comment
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Icon(Icons.chat_bubble_outline_rounded,
@@ -477,8 +504,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
             ]),
           ),
-
-          // Like count
           if (_likeCount > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -491,8 +516,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
               ),
             ),
-
-          // Caption
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
             child: RichText(
@@ -500,7 +523,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 TextSpan(
                   text: '${post.authorName}  ',
                   style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    color:
+                    isDark ? Colors.white : AppTheme.lightTextPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -508,7 +532,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 TextSpan(
                   text: post.title,
                   style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    color:
+                    isDark ? Colors.white : AppTheme.lightTextPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -516,22 +541,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ]),
             ),
           ),
-
-          // Content
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
             child: Text(
               post.content,
               style: TextStyle(
-                color:
-                isDark ? Colors.white70 : Colors.grey[700],
+                color: isDark ? Colors.white70 : Colors.grey[700],
                 fontSize: 14,
                 height: 1.55,
               ),
             ),
           ),
-
-          // Time
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Text(
@@ -543,7 +563,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
             ),
           ),
-
           Divider(
               height: 1,
               color: isDark
@@ -584,7 +603,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     children: [
                       Icon(Icons.chat_bubble_outline_rounded,
                           size: 36,
-                          color: isDark ? Colors.white24 : Colors.grey[300]),
+                          color:
+                          isDark ? Colors.white24 : Colors.grey[300]),
                       const SizedBox(height: 12),
                       Text(
                         'Chưa có bình luận nào\nHãy là người đầu tiên!',
@@ -606,9 +626,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 final d = doc.data() as Map<String, dynamic>;
                 final createdAt =
                 (d['createdAt'] as dynamic)?.toDate() as DateTime?;
-                final timeStr = createdAt != null
-                    ? _timeAgo(createdAt)
-                    : '';
+                final timeStr =
+                createdAt != null ? _timeAgo(createdAt) : '';
                 final isMe = d['uid'] ==
                     context.read<AuthProvider>().currentUser?.uid;
 
@@ -617,7 +636,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Avatar
                       CircleAvatar(
                         radius: 17,
                         backgroundColor:
@@ -686,7 +704,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         .collection('posts')
                                         .doc(widget.post.id)
                                         .update({
-                                      'commentCount': FieldValue.increment(-1)
+                                      'commentCount':
+                                      FieldValue.increment(-1)
                                     });
                                   },
                                   child: Text(
@@ -728,7 +747,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         bottom: MediaQuery.of(context).padding.bottom + 8,
       ),
       child: Row(children: [
-        // My avatar
         CircleAvatar(
           radius: 17,
           backgroundColor: AppTheme.secondary.withOpacity(0.15),
@@ -746,7 +764,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               : null,
         ),
         const SizedBox(width: 10),
-        // Input
         Expanded(
           child: Container(
             decoration: BoxDecoration(
@@ -781,7 +798,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        // Send
         GestureDetector(
           onTap: _sending ? null : _sendComment,
           child: AnimatedContainer(
@@ -826,7 +842,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         child: SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isDark
@@ -853,10 +870,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
             ListTile(
               leading: Icon(Icons.share_outlined,
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary),
+                  color:
+                  isDark ? Colors.white : AppTheme.lightTextPrimary),
               title: Text('Chia sẻ',
                   style: TextStyle(
-                      color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      color: isDark
+                          ? Colors.white
+                          : AppTheme.lightTextPrimary,
                       fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(context),
             ),
