@@ -9,6 +9,7 @@ import '../../services/theme_provider.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../chat/chat_screen.dart';
+import '../shared/public_profile_screen.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -85,23 +86,20 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
           child: const Icon(Icons.calendar_month_rounded, color: _roleColor, size: 18),
         ),
         const SizedBox(width: 10),
-        Text(
-          'Lịch sử đặt lịch',
-          style: TextStyle(
-            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        Text('Lịch sử đặt lịch',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            )),
       ]),
       actions: [
         IconButton(
           icon: Icon(
-            context.watch<ThemeProvider>().isDarkMode
-                ? Icons.dark_mode
-                : Icons.light_mode,
-            color: isDark ? Colors.amber : Colors.orange,
-          ),
+              context.watch<ThemeProvider>().isDarkMode
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+              color: isDark ? Colors.amber : Colors.orange),
           onPressed: () => context.read<ThemeProvider>().toggleTheme(),
         ),
         IconButton(
@@ -158,7 +156,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
   }
 }
 
-// ── Booking List per tab ────────────────────────────────────────────────────
+// ── Booking List per tab ──────────────────────────────────────
 class _BookingList extends StatelessWidget {
   final String uid;
   final String? statusFilter;
@@ -176,9 +174,6 @@ class _BookingList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (uid.isEmpty) return const SizedBox.shrink();
 
-    // KEY FIX: Tab "Tất cả" chỉ filter userId, KHÔNG dùng orderBy
-    // Tránh lỗi "requires an index" vì chưa có composite index
-    // Sort sẽ được thực hiện bằng Dart sau khi nhận data
     Query query;
     if (statusFilter == null) {
       query = FirebaseFirestore.instance
@@ -204,14 +199,10 @@ class _BookingList extends StatelessWidget {
           );
         }
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppTheme.roleUser),
-          );
+          return const Center(child: CircularProgressIndicator(color: AppTheme.roleUser));
         }
 
         var docs = snap.data?.docs ?? [];
-
-        // Sort bằng Dart (descending by createdAt)
         docs.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
@@ -245,7 +236,7 @@ class _BookingList extends StatelessWidget {
   }
 }
 
-// ── Booking Card ────────────────────────────────────────────────────────────
+// ── Booking Card ──────────────────────────────────────────────
 class _BookingCard extends StatelessWidget {
   final String bookingId;
   final Map<String, dynamic> data;
@@ -263,7 +254,9 @@ class _BookingCard extends StatelessWidget {
         : '---';
     final timeSlot = data['timeSlot'] as String? ?? '';
     final photographerName = data['photographerName'] as String?;
+    final photographerId = data['photographerId'] as String?;
     final makeuperName = data['makeuperName'] as String?;
+    final makeuperId = data['makeuperId'] as String?;
     final address = data['address'] as String? ?? '';
     final note = data['note'] as String?;
     final photographerPrice = (data['photographerPrice'] as num?)?.toInt() ?? 0;
@@ -279,7 +272,7 @@ class _BookingCard extends StatelessWidget {
         boxShadow: [BoxShadow(color: statusInfo.color.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Header
+        // ── Header ──
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
@@ -309,84 +302,136 @@ class _BookingCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (photographerName != null) ...[
-              _ProviderRow(icon: Icons.camera_alt_rounded, color: AppTheme.rolePhotographer,
-                  role: 'Photographer', name: photographerName, price: photographerPrice, isDark: isDark),
-              if (makeuperName != null) const SizedBox(height: 8),
-            ],
+            // ── Provider rows (tap để xem profile) ──
+            if (photographerName != null)
+              _ProviderRow(
+                icon: Icons.camera_alt_rounded,
+                color: AppTheme.rolePhotographer,
+                role: 'Photographer',
+                name: photographerName,
+                price: photographerPrice,
+                isDark: isDark,
+                onTap: photographerId != null
+                    ? () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PublicProfileScreen(userId: photographerId)))
+                    : null,
+              ),
+            if (photographerName != null && makeuperName != null) const SizedBox(height: 8),
             if (makeuperName != null)
-              _ProviderRow(icon: Icons.brush_rounded, color: AppTheme.roleMakeuper,
-                  role: 'Makeup Artist', name: makeuperName, price: makeuperPrice, isDark: isDark),
+              _ProviderRow(
+                icon: Icons.brush_rounded,
+                color: AppTheme.roleMakeuper,
+                role: 'Makeup Artist',
+                name: makeuperName,
+                price: makeuperPrice,
+                isDark: isDark,
+                onTap: makeuperId != null
+                    ? () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PublicProfileScreen(userId: makeuperId)))
+                    : null,
+              ),
 
             const SizedBox(height: 10),
             Divider(color: isDark ? Colors.white10 : Colors.grey.withOpacity(0.12)),
             const SizedBox(height: 8),
 
+            // ── Địa điểm ──
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Icon(Icons.location_on_rounded, color: Colors.orange, size: 15),
               const SizedBox(width: 6),
-              Expanded(child: Text(address, maxLines: 2, overflow: TextOverflow.ellipsis,
+              Expanded(child: Text(address,
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[700], fontSize: 12, height: 1.4))),
             ]),
 
+            // ── Ghi chú ──
             if (note != null && note.isNotEmpty) ...[
               const SizedBox(height: 6),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 15),
                 const SizedBox(width: 6),
-                Expanded(child: Text(note, maxLines: 2, overflow: TextOverflow.ellipsis,
+                Expanded(child: Text(note,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 12, height: 1.4))),
               ]),
             ],
 
             const SizedBox(height: 12),
 
+            // ── Tổng tiền + nút hành động ──
             Row(children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Tổng tiền', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+                Text('Tổng tiền',
+                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
                 const SizedBox(height: 2),
                 Text(totalPrice > 0 ? '${_formatPrice(totalPrice)}đ' : 'Chưa có giá',
-                    style: const TextStyle(color: AppTheme.roleUser, fontSize: 18, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(
+                        color: AppTheme.roleUser, fontSize: 18, fontWeight: FontWeight.w800)),
               ]),
               const Spacer(),
+              // ← FIX: dùng if/else if thay vì nhiều if riêng lẻ
               if (status == 'pending')
-                _OutlineButton(label: 'Hủy booking', color: Colors.red, isDark: isDark,
-                    onTap: () => _showCancelDialog(context, bookingId)),
-              if (status == 'confirmed')
+                _OutlineButton(
+                  label: 'Hủy booking',
+                  color: Colors.red,
+                  isDark: isDark,
+                  onTap: () => _showCancelDialog(context, bookingId),
+                )
+              else if (status == 'confirmed')
                 _OutlineButton(
                   label: 'Nhắn tin',
                   color: AppTheme.roleUser,
                   isDark: isDark,
                   onTap: () async {
                     final me = context.read<AuthProvider>().currentUser!;
-                    final chatId = await ChatService.getOrCreateChat(
-                      me: me,
-                      otherId: data['photographerId'] ?? data['makeuperId'],
-                      otherName: data['photographerName'] ?? data['makeuperName'],
-                      otherRole: data['photographerId'] != null ? 'photographer' : 'makeuper',
-                    );
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatScreen(
-                        chatId: chatId,
-                        otherUserId: data['photographerId'] ?? data['makeuperId'],
-                        otherUserName: data['photographerName'] ?? data['makeuperName'],
-                        otherUserRole: data['photographerId'] != null ? 'photographer' : 'makeuper',
-                      ),
-                    ));
+                    final providerId = photographerId ?? makeuperId;
+                    final providerName = photographerName ?? makeuperName ?? '';
+                    final providerRole = photographerId != null ? 'photographer' : 'makeuper';
+                    if (providerId == null) return;
+                    try {
+                      final chatId = await ChatService.getOrCreateChat(
+                        me: me,
+                        otherId: providerId,
+                        otherName: providerName,
+                        otherRole: providerRole,
+                      );
+                      if (context.mounted) {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            chatId: chatId,
+                            otherUserId: providerId,
+                            otherUserName: providerName,
+                            otherUserRole: providerRole,
+                          ),
+                        ));
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Lỗi: $e'),
+                          backgroundColor: AppTheme.error,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                      }
+                    }
                   },
-                ),
-                _OutlineButton(label: 'Liên hệ', color: AppTheme.roleUser, isDark: isDark,
+                )
+              else if (status == 'completed')
+                  _OutlineButton(
+                    label: '⭐ Đánh giá',
+                    color: Colors.amber,
+                    isDark: isDark,
                     onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('💬 Tính năng chat sắp ra mắt!'), behavior: SnackBarBehavior.floating))),
-              if (status == 'completed')
-                _OutlineButton(label: '⭐ Đánh giá', color: Colors.amber, isDark: isDark,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('⭐ Tính năng đánh giá sắp ra mắt!'), behavior: SnackBarBehavior.floating))),
+                        const SnackBar(
+                            content: Text('⭐ Tính năng đánh giá sắp ra mắt!'),
+                            behavior: SnackBarBehavior.floating)),
+                  ),
             ]),
 
+            // ── Provider status chips ──
             if (status == 'pending') ...[
               const SizedBox(height: 10),
-              _buildProviderStatusChips(isDark),
+              _buildProviderStatusChips(),
             ],
           ]),
         ),
@@ -394,17 +439,23 @@ class _BookingCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProviderStatusChips(bool isDark) {
+  Widget _buildProviderStatusChips() {
     final photoStatus = data['photographerStatus'] as String?;
     final makeupStatus = data['makeuperStatus'] as String?;
     final hasPhoto = data['photographerId'] != null;
     final hasMakeup = data['makeuperId'] != null;
     if (!hasPhoto && !hasMakeup) return const SizedBox.shrink();
     return Wrap(spacing: 6, children: [
-      if (hasPhoto) _StatusChip(label: 'Photographer: ${_providerStatusLabel(photoStatus)}',
-          color: _providerStatusColor(photoStatus), isDark: isDark),
-      if (hasMakeup) _StatusChip(label: 'Makeup: ${_providerStatusLabel(makeupStatus)}',
-          color: _providerStatusColor(makeupStatus), isDark: isDark),
+      if (hasPhoto)
+        _StatusChip(
+            label: 'Photographer: ${_providerStatusLabel(photoStatus)}',
+            color: _providerStatusColor(photoStatus),
+            isDark: isDark),
+      if (hasMakeup)
+        _StatusChip(
+            label: 'Makeup: ${_providerStatusLabel(makeupStatus)}',
+            color: _providerStatusColor(makeupStatus),
+            isDark: isDark),
     ]);
   }
 
@@ -432,31 +483,44 @@ class _BookingCard extends StatelessWidget {
         backgroundColor: isDark ? AppTheme.surface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Hủy booking?',
-            style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                fontWeight: FontWeight.w700)),
         content: Text('Bạn có chắc muốn hủy booking này không?',
             style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx),
-              child: Text('Không', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Không',
+                  style: TextStyle(color: isDark ? Colors.white38 : Colors.grey))),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({'status': 'rejected'});
+                await FirebaseFirestore.instance
+                    .collection('bookings')
+                    .doc(bookingId)
+                    .update({'status': 'rejected'});
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('✅ Đã hủy booking'), backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('✅ Đã hủy booking'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating));
                 }
               } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red,
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: const Text('Hủy booking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10))),
+            child: const Text('Hủy booking',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -465,10 +529,14 @@ class _BookingCard extends StatelessWidget {
 
   _StatusInfo _getStatusInfo(String status) {
     switch (status) {
-      case 'confirmed': return const _StatusInfo('Đã xác nhận', Icons.check_circle_rounded, Color(0xFF4CAF50));
-      case 'completed': return const _StatusInfo('Hoàn thành', Icons.done_all_rounded, Colors.blue);
-      case 'rejected': return const _StatusInfo('Đã hủy', Icons.cancel_rounded, Colors.red);
-      default: return const _StatusInfo('Chờ xác nhận', Icons.pending_rounded, Colors.orange);
+      case 'confirmed':
+        return const _StatusInfo('Đã xác nhận', Icons.check_circle_rounded, Color(0xFF4CAF50));
+      case 'completed':
+        return const _StatusInfo('Hoàn thành', Icons.done_all_rounded, Colors.blue);
+      case 'rejected':
+        return const _StatusInfo('Đã hủy', Icons.cancel_rounded, Colors.red);
+      default:
+        return const _StatusInfo('Chờ xác nhận', Icons.pending_rounded, Colors.orange);
     }
   }
 
@@ -488,6 +556,7 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
+// ── Provider Row (có thể tap để xem profile) ─────────────────
 class _ProviderRow extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -495,24 +564,56 @@ class _ProviderRow extends StatelessWidget {
   final String name;
   final int price;
   final bool isDark;
+  final VoidCallback? onTap;
 
-  const _ProviderRow({required this.icon, required this.color, required this.role,
-    required this.name, required this.price, required this.isDark});
+  const _ProviderRow({
+    required this.icon,
+    required this.color,
+    required this.role,
+    required this.name,
+    required this.price,
+    required this.isDark,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: color, size: 18)),
-      const SizedBox(width: 10),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name, style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
-        Text(role, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
-      ])),
-      if (price > 0) Text('${_fmt(price)}đ',
-          style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600)),
-    ]);
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(children: [
+        Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text(name,
+                    style: TextStyle(
+                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+                if (onTap != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_ios_rounded,
+                      size: 10, color: isDark ? Colors.white38 : Colors.grey),
+                ],
+              ]),
+              Text(role,
+                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+            ])),
+        if (price > 0)
+          Text('${_fmt(price)}đ',
+              style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey[700],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+      ]),
+    );
   }
 
   String _fmt(int price) {
@@ -526,13 +627,18 @@ class _ProviderRow extends StatelessWidget {
   }
 }
 
+// ── Shared Widgets ────────────────────────────────────────────
 class _OutlineButton extends StatelessWidget {
   final String label;
   final Color color;
   final bool isDark;
   final VoidCallback onTap;
 
-  const _OutlineButton({required this.label, required this.color, required this.isDark, required this.onTap});
+  const _OutlineButton(
+      {required this.label,
+        required this.color,
+        required this.isDark,
+        required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -541,9 +647,11 @@ class _OutlineButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-            color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10),
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withOpacity(0.4))),
-        child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+        child: Text(label,
+            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -561,9 +669,11 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6),
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: color.withOpacity(0.3))),
-      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(label,
+          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -575,7 +685,12 @@ class _EmptyState extends StatelessWidget {
   final Color color;
   final bool isDark;
 
-  const _EmptyState({required this.icon, required this.title, required this.subtitle, required this.color, required this.isDark});
+  const _EmptyState(
+      {required this.icon,
+        required this.title,
+        required this.subtitle,
+        required this.color,
+        required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -583,13 +698,26 @@ class _EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(40),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 72, height: 72,
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+          Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color.withOpacity(0.6), size: 36)),
           const SizedBox(height: 16),
-          Text(title, style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 16, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+          Text(title,
+              style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 13, height: 1.4), textAlign: TextAlign.center),
+          Text(subtitle,
+              style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey,
+                  fontSize: 13,
+                  height: 1.4),
+              textAlign: TextAlign.center),
         ]),
       ),
     );
@@ -604,7 +732,8 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(color: isDark ? AppTheme.primary : AppTheme.lightBg, child: tabBar);
+    return Container(
+        color: isDark ? AppTheme.primary : AppTheme.lightBg, child: tabBar);
   }
 
   @override double get maxExtent => 56;
