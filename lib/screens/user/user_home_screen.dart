@@ -601,7 +601,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             child: const Icon(Icons.camera_alt_rounded,
                 color: Colors.white, size: 18)),
         const SizedBox(width: 8),
-        Text('SnapBook',
+        Text('SMEE',
             style: TextStyle(
                 color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w800,

@@ -98,29 +98,15 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondary,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.secondary.withOpacity(0.4),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      color: Colors.white,
-                      size: 52,
-                    ),
+                  Image.asset(
+                    'assets/icons/splash_icon.png',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'SnapBook',
+                    'SMEE',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 36,
