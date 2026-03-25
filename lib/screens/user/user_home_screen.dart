@@ -8,8 +8,8 @@ import '../../services/theme_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../models/service_model.dart';
-import '../auth/login_screen.dart';
 import '../booking/booking_step1_providers.dart';
+import 'search_screen.dart'; // Đã thêm import trang tìm kiếm
 
 // ── Banner Widget ─────────────────────────────────────────────
 class _BannerSlider extends StatefulWidget {
@@ -184,7 +184,6 @@ class _BookingCalendarState extends State<_BookingCalendar> {
           .where('userId', isEqualTo: widget.uid)
           .where('status', whereIn: ['pending', 'confirmed']).snapshots(),
       builder: (context, snap) {
-        // Gom các ngày có booking
         final bookedDates = <DateTime>{};
         final bookingsByDate = <String, List<Map<String, dynamic>>>{};
 
@@ -216,7 +215,6 @@ class _BookingCalendarState extends State<_BookingCalendar> {
               ],
             ),
             child: Column(children: [
-              // ── Header tháng ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
                 child: Row(children: [
@@ -249,8 +247,6 @@ class _BookingCalendarState extends State<_BookingCalendar> {
                   ),
                 ]),
               ),
-
-              // ── Tiêu đề ngày trong tuần ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
@@ -272,14 +268,10 @@ class _BookingCalendarState extends State<_BookingCalendar> {
                 ),
               ),
               const SizedBox(height: 6),
-
-              // ── Grid ngày ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
                 child: _buildGrid(isDark, bookedDates),
               ),
-
-              // ── Chi tiết booking ngày đã chọn ──
               if (_selectedDay != null) ...[
                 Divider(
                     height: 1,
@@ -331,8 +323,7 @@ class _BookingCalendarState extends State<_BookingCalendar> {
             return Expanded(
               child: GestureDetector(
                 onTap: () => setState(() {
-                  _selectedDay =
-                  isSelected ? null : date;
+                  _selectedDay = isSelected ? null : date;
                 }),
                 child: Container(
                   height: 44,
@@ -369,7 +360,6 @@ class _BookingCalendarState extends State<_BookingCalendar> {
                           fontSize: 13,
                         ),
                       ),
-                      // Dot chỉ có booking
                       if (hasBooking)
                         Positioned(
                           bottom: 4,
@@ -438,7 +428,6 @@ class _BookingCalendarState extends State<_BookingCalendar> {
   }
 }
 
-// ── Booking chip hiển thị trong ngày được chọn ────────────────
 class _BookingChip extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool isDark;
@@ -539,14 +528,27 @@ class UserHomeScreen extends StatefulWidget {
 }
 
 class _UserHomeScreenState extends State<UserHomeScreen> {
-  final _searchCtrl = TextEditingController();
-  String _searchQuery = '';
   int _selectedFilter = 0;
 
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
+  void _openSearch(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const SearchScreen(),
+        transitionsBuilder: (_, anim, __, child) => FadeTransition(
+          opacity: anim,
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Chào buổi sáng 🌤';
+    if (hour < 18) return 'Chào buổi chiều ☀️';
+    return 'Chào buổi tối 🌙';
   }
 
   @override
@@ -558,7 +560,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
       body: CustomScrollView(slivers: [
         _buildAppBar(isDark, user),
-        SliverToBoxAdapter(child: _buildSearchBar(isDark)),
+        SliverToBoxAdapter(child: _buildSearchTap(isDark)),
         const SliverToBoxAdapter(child: _BannerSlider()),
         // ── Lịch đặt chỗ ──
         SliverToBoxAdapter(child: _buildSectionTitle('📅 Lịch đặt chỗ của bạn', isDark)),
@@ -592,20 +594,39 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
       title: Row(children: [
-        Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-                color: AppTheme.secondary,
-                borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.camera_alt_rounded,
-                color: Colors.white, size: 18)),
-        const SizedBox(width: 8),
-        Text('SMEE',
-            style: TextStyle(
+        Image.asset(
+          'assets/icons/smee_logo.png',
+          height: 34,
+          fit: BoxFit.contain,
+        ),
+
+        const SizedBox(width: 12),
+        // ── Dấu gạch chia cách ──
+        Container(width: 1, height: 24, color: isDark ? Colors.white24 : Colors.grey[300]),
+        const SizedBox(width: 12),
+
+        // ── Lời chào + Tên ──
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              _greeting(),
+              style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.grey[500],
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400),
+            ),
+            Text(
+              user?.fullName.split(' ').last ?? 'Bạn',
+              style: TextStyle(
                 color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w800,
-                fontSize: 18)),
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ]),
+        ),
       ]),
       actions: [
         IconButton(
@@ -632,46 +653,38 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                       color: AppTheme.secondary,
                       shape: BoxShape.circle))),
         ]),
-        GestureDetector(
-          onTap: () => _logout(context),
-          child: Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                    color: AppTheme.roleUser.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: AppTheme.roleUser.withOpacity(0.4))),
-                child: const Icon(Icons.person_rounded,
-                    color: AppTheme.roleUser, size: 18)),
-          ),
-        ),
+        // Đã gỡ bỏ nút Logout profile tại đây
       ],
     );
   }
 
-  Widget _buildSearchBar(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: TextField(
-        controller: _searchCtrl,
-        onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-        style: TextStyle(
-            color: isDark ? Colors.white : AppTheme.lightTextPrimary),
-        decoration: InputDecoration(
-          hintText: 'Tìm dịch vụ, photographer, makeup...',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _searchCtrl.clear();
-                setState(() => _searchQuery = '');
-              })
-              : null,
+  // ── Thay đổi thành widget tìm kiếm có thể bấm được ──
+  Widget _buildSearchTap(bool isDark) {
+    return GestureDetector(
+      onTap: () => _openSearch(context),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        height: 46,
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.inputFill : const Color(0xFFF0F2F5),
+          borderRadius: BorderRadius.circular(23),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.06) : Colors.transparent,
+          ),
         ),
+        child: Row(children: [
+          const SizedBox(width: 14),
+          Icon(Icons.search_rounded,
+              color: isDark ? Colors.white38 : Colors.grey[400], size: 20),
+          const SizedBox(width: 10),
+          Text(
+            'Tìm photographer, makeup, dịch vụ...',
+            style: TextStyle(
+              color: isDark ? Colors.white38 : Colors.grey[400],
+              fontSize: 14,
+            ),
+          ),
+        ]),
       ),
     );
   }
@@ -731,17 +744,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   Widget _buildProviderServiceList(bool isDark) {
-    Query providerQuery =
-    FirebaseFirestore.instance.collection('users');
+    Query providerQuery = FirebaseFirestore.instance.collection('users');
     if (_selectedFilter == 1) {
-      providerQuery =
-          providerQuery.where('role', isEqualTo: 'photographer');
+      providerQuery = providerQuery.where('role', isEqualTo: 'photographer');
     } else if (_selectedFilter == 2) {
-      providerQuery =
-          providerQuery.where('role', isEqualTo: 'makeuper');
+      providerQuery = providerQuery.where('role', isEqualTo: 'makeuper');
     } else {
-      providerQuery = providerQuery
-          .where('role', whereIn: ['photographer', 'makeuper']);
+      providerQuery = providerQuery.where('role', whereIn: ['photographer', 'makeuper']);
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -751,22 +760,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           return const Padding(
               padding: EdgeInsets.all(30),
               child: Center(
-                  child: CircularProgressIndicator(
-                      color: AppTheme.secondary)));
+                  child: CircularProgressIndicator(color: AppTheme.secondary)));
         }
 
-        var providers = snap.data?.docs ?? [];
-        if (_searchQuery.isNotEmpty) {
-          providers = providers.where((d) {
-            final data = d.data() as Map<String, dynamic>;
-            return (data['fullName'] ?? '')
-                .toLowerCase()
-                .contains(_searchQuery) ||
-                (data['bio'] ?? '')
-                    .toLowerCase()
-                    .contains(_searchQuery);
-          }).toList();
-        }
+        final providers = snap.data?.docs ?? [];
 
         if (providers.isEmpty) {
           return Padding(
@@ -774,14 +771,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               child: Center(
                   child: Text('Không tìm thấy kết quả',
                       style: TextStyle(
-                          color:
-                          isDark ? Colors.white38 : Colors.grey))));
+                          color: isDark ? Colors.white38 : Colors.grey))));
         }
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Text('${providers.length} nhà cung cấp',
@@ -793,22 +788,11 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               providerId: doc.id,
               providerData: doc.data() as Map<String, dynamic>,
               isDark: isDark,
-              searchQuery: _searchQuery,
             )),
           ]),
         );
       },
     );
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    await context.read<AuthProvider>().logout();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (_) => false);
-    }
   }
 }
 
@@ -817,13 +801,11 @@ class _ProviderServiceCard extends StatefulWidget {
   final String providerId;
   final Map<String, dynamic> providerData;
   final bool isDark;
-  final String searchQuery;
 
   const _ProviderServiceCard({
     required this.providerId,
     required this.providerData,
     required this.isDark,
-    required this.searchQuery,
   });
 
   @override
@@ -836,12 +818,10 @@ class _ProviderServiceCardState extends State<_ProviderServiceCard> {
   @override
   Widget build(BuildContext context) {
     final isPhoto = widget.providerData['role'] == 'photographer';
-    final color =
-    isPhoto ? AppTheme.rolePhotographer : AppTheme.roleMakeuper;
+    final color = isPhoto ? AppTheme.rolePhotographer : AppTheme.roleMakeuper;
     final name = widget.providerData['fullName'] ?? '';
     final bio = widget.providerData['bio'] ?? 'Chưa có mô tả';
-    final rating =
-        (widget.providerData['rating'] as num?)?.toDouble() ?? 0.0;
+    final rating = (widget.providerData['rating'] as num?)?.toDouble() ?? 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -869,8 +849,7 @@ class _ProviderServiceCardState extends State<_ProviderServiceCard> {
                   decoration: BoxDecoration(
                       color: color.withOpacity(0.15),
                       shape: BoxShape.circle,
-                      border:
-                      Border.all(color: color.withOpacity(0.4), width: 2)),
+                      border: Border.all(color: color.withOpacity(0.4), width: 2)),
                   child: Icon(
                       isPhoto
                           ? Icons.camera_alt_rounded
@@ -909,8 +888,9 @@ class _ProviderServiceCardState extends State<_ProviderServiceCard> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color:
-                                widget.isDark ? Colors.white38 : Colors.grey,
+                                color: widget.isDark
+                                    ? Colors.white38
+                                    : Colors.grey,
                                 fontSize: 12)),
                         const SizedBox(height: 4),
                         Row(children: [
@@ -936,22 +916,10 @@ class _ProviderServiceCardState extends State<_ProviderServiceCard> {
               .where('providerId', isEqualTo: widget.providerId)
               .snapshots(),
           builder: (context, snap) {
-            var services = (snap.data?.docs ?? [])
+            final services = (snap.data?.docs ?? [])
                 .map((d) => ServiceModel.fromFirestore(
                 d.data() as Map<String, dynamic>, d.id))
                 .toList();
-
-            if (widget.searchQuery.isNotEmpty) {
-              services = services
-                  .where((s) =>
-              s.name
-                  .toLowerCase()
-                  .contains(widget.searchQuery) ||
-                  s.description
-                      .toLowerCase()
-                      .contains(widget.searchQuery))
-                  .toList();
-            }
 
             if (snap.connectionState == ConnectionState.waiting) {
               return Padding(
@@ -1068,11 +1036,12 @@ class _ServiceRow extends StatelessWidget {
   final bool isDark;
   final VoidCallback onBook;
 
-  const _ServiceRow(
-      {required this.service,
-        required this.color,
-        required this.isDark,
-        required this.onBook});
+  const _ServiceRow({
+    required this.service,
+    required this.color,
+    required this.isDark,
+    required this.onBook,
+  });
 
   @override
   Widget build(BuildContext context) {
