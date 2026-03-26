@@ -72,11 +72,11 @@ class _SearchScreenState extends State<SearchScreen>
 
       final users = usersSnap.docs
           .where((d) {
-            final data = d.data();
-            final name = (data['fullName'] ?? '').toLowerCase();
-            final bio = (data['bio'] ?? '').toLowerCase();
-            return name.contains(q) || bio.contains(q);
-          })
+        final data = d.data();
+        final name = (data['fullName'] ?? '').toLowerCase();
+        final bio = (data['bio'] ?? '').toLowerCase();
+        return name.contains(q) || bio.contains(q);
+      })
           .map((d) => {'uid': d.id, ...d.data()})
           .toList();
 
@@ -87,12 +87,12 @@ class _SearchScreenState extends State<SearchScreen>
 
       final services = servicesSnap.docs
           .where((d) {
-            final data = d.data();
-            final name = (data['name'] ?? '').toLowerCase();
-            final desc = (data['description'] ?? '').toLowerCase();
-            final providerName = (data['providerName'] ?? '').toLowerCase();
-            return name.contains(q) || desc.contains(q) || providerName.contains(q);
-          })
+        final data = d.data();
+        final name = (data['name'] ?? '').toLowerCase();
+        final desc = (data['description'] ?? '').toLowerCase();
+        final providerName = (data['providerName'] ?? '').toLowerCase();
+        return name.contains(q) || desc.contains(q) || providerName.contains(q);
+      })
           .map((d) => {'id': d.id, ...d.data()})
           .toList();
 
@@ -180,34 +180,34 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                   prefixIcon: _isLoading
                       ? Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppTheme.secondary),
-                          ),
-                        )
+                    padding: const EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.secondary),
+                    ),
+                  )
                       : const Icon(Icons.search_rounded,
-                          color: AppTheme.secondary, size: 20),
+                      color: AppTheme.secondary, size: 20),
                   suffixIcon: _searchCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear_rounded,
-                              color: isDark ? Colors.white38 : Colors.grey,
-                              size: 18),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() {
-                              _userResults = [];
-                              _serviceResults = [];
-                              _query = '';
-                            });
-                          },
-                        )
+                    icon: Icon(Icons.clear_rounded,
+                        color: isDark ? Colors.white38 : Colors.grey,
+                        size: 18),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() {
+                        _userResults = [];
+                        _serviceResults = [];
+                        _query = '';
+                      });
+                    },
+                  )
                       : null,
                   border: InputBorder.none,
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ),
@@ -227,45 +227,49 @@ class _SearchScreenState extends State<SearchScreen>
     return Container(
       color: isDark ? AppTheme.surface : Colors.white,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-      child: Row(
-        children: List.generate(tabs.length, (i) {
-          final sel = _tabIndex == i;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _tabIndex = i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: sel ? AppTheme.secondary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: sel
-                        ? AppTheme.secondary
-                        : (isDark ? Colors.white24 : Colors.grey.withOpacity(0.3)),
-                  ),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(tabs[i].$2,
-                      size: 13,
+      // ✅ FIX: Wrap Row trong SingleChildScrollView để tránh overflow
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(tabs.length, (i) {
+            final sel = _tabIndex == i;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() => _tabIndex = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: sel ? AppTheme.secondary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
                       color: sel
-                          ? Colors.white
-                          : (isDark ? Colors.white54 : Colors.grey)),
-                  const SizedBox(width: 5),
-                  Text(tabs[i].$1,
-                      style: TextStyle(
-                          color: sel
-                              ? Colors.white
-                              : (isDark ? Colors.white54 : Colors.grey),
-                          fontSize: 12,
-                          fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
-                ]),
+                          ? AppTheme.secondary
+                          : (isDark ? Colors.white24 : Colors.grey.withOpacity(0.3)),
+                    ),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(tabs[i].$2,
+                        size: 13,
+                        color: sel
+                            ? Colors.white
+                            : (isDark ? Colors.white54 : Colors.grey)),
+                    const SizedBox(width: 5),
+                    Text(tabs[i].$1,
+                        style: TextStyle(
+                            color: sel
+                                ? Colors.white
+                                : (isDark ? Colors.white54 : Colors.grey),
+                            fontSize: 12,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+                  ]),
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -291,53 +295,53 @@ class _SearchScreenState extends State<SearchScreen>
               _tabIndex == 1
                   ? 'Photographer (${users.length})'
                   : _tabIndex == 2
-                      ? 'Makeup Artist (${users.length})'
-                      : 'Người dùng (${users.length})'),
+                  ? 'Makeup Artist (${users.length})'
+                  : 'Người dùng (${users.length})'),
           ...users.map((u) => _UserResultTile(
-                user: u,
-                isDark: isDark,
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            PublicProfileScreen(userId: u['uid']))),
-              )),
+            user: u,
+            isDark: isDark,
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        PublicProfileScreen(userId: u['uid']))),
+          )),
         ],
         // Services section
         if (services.isNotEmpty) ...[
           _buildSectionHeader(isDark, 'Dịch vụ (${services.length})'),
           ...services.map((s) => _ServiceResultTile(
-                service: s,
-                isDark: isDark,
-                onBook: () {
-                  final isPhoto = s['providerRole'] == 'photographer';
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BookingStep1Screen(
-                        preSelectedPhotographer: isPhoto
-                            ? {
-                                'uid': s['providerId'],
-                                'fullName': s['providerName'],
-                                'price': s['price'],
-                                'role': s['providerRole'],
-                                'serviceName': s['name'],
-                              }
-                            : null,
-                        preSelectedMakeuper: !isPhoto
-                            ? {
-                                'uid': s['providerId'],
-                                'fullName': s['providerName'],
-                                'price': s['price'],
-                                'role': s['providerRole'],
-                                'serviceName': s['name'],
-                              }
-                            : null,
-                      ),
-                    ),
-                  );
-                },
-              )),
+            service: s,
+            isDark: isDark,
+            onBook: () {
+              final isPhoto = s['providerRole'] == 'photographer';
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BookingStep1Screen(
+                    preSelectedPhotographer: isPhoto
+                        ? {
+                      'uid': s['providerId'],
+                      'fullName': s['providerName'],
+                      'price': s['price'],
+                      'role': s['providerRole'],
+                      'serviceName': s['name'],
+                    }
+                        : null,
+                    preSelectedMakeuper: !isPhoto
+                        ? {
+                      'uid': s['providerId'],
+                      'fullName': s['providerName'],
+                      'price': s['price'],
+                      'role': s['providerRole'],
+                      'serviceName': s['name'],
+                    }
+                        : null,
+                  ),
+                ),
+              );
+            },
+          )),
         ],
         const SizedBox(height: 20),
       ],
@@ -381,37 +385,37 @@ class _SearchScreenState extends State<SearchScreen>
           runSpacing: 8,
           children: suggestions
               .map((s) => GestureDetector(
-                    onTap: () {
-                      _searchCtrl.text = s;
-                      _search(s);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
+            onTap: () {
+              _searchCtrl.text = s;
+              _search(s);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.inputFill
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: isDark
+                        ? Colors.white12
+                        : Colors.grey.withOpacity(0.2)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.trending_up_rounded,
+                    size: 14,
+                    color: isDark ? Colors.white38 : Colors.grey),
+                const SizedBox(width: 6),
+                Text(s,
+                    style: TextStyle(
                         color: isDark
-                            ? AppTheme.inputFill
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: isDark
-                                ? Colors.white12
-                                : Colors.grey.withOpacity(0.2)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.trending_up_rounded,
-                            size: 14,
-                            color: isDark ? Colors.white38 : Colors.grey),
-                        const SizedBox(width: 6),
-                        Text(s,
-                            style: TextStyle(
-                                color: isDark
-                                    ? Colors.white70
-                                    : AppTheme.lightTextPrimary,
-                                fontSize: 13)),
-                      ]),
-                    ),
-                  ))
+                            ? Colors.white70
+                            : AppTheme.lightTextPrimary,
+                        fontSize: 13)),
+              ]),
+            ),
+          ))
               .toList(),
         ),
       ],
@@ -471,11 +475,11 @@ class _UserResultTile extends StatelessWidget {
             ),
             child: user['avatarUrl'] != null
                 ? ClipOval(
-                    child: Image.network(user['avatarUrl'], fit: BoxFit.cover))
+                child: Image.network(user['avatarUrl'], fit: BoxFit.cover))
                 : Icon(
-                    isPhoto ? Icons.camera_alt_rounded : Icons.brush_rounded,
-                    color: color,
-                    size: 22),
+                isPhoto ? Icons.camera_alt_rounded : Icons.brush_rounded,
+                color: color,
+                size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -489,7 +493,7 @@ class _UserResultTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                       color: color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6)),
@@ -620,7 +624,7 @@ class _ServiceResultTile extends StatelessWidget {
               onTap: onBook,
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                     color: color, borderRadius: BorderRadius.circular(8)),
                 child: const Text('Đặt lịch',
