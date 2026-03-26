@@ -208,29 +208,19 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 120,
-          height: 120,
+          width: 150,
+          height: 150,
           child: Image.asset(
             'assets/icons/smee_logo.png',
             fit: BoxFit.contain,
           ),
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Sẵn sàng để\nbắt đầu chưa? 🚀',
-          style: TextStyle(
-            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Text(
           'Đăng nhập để tiếp tục',
           style: TextStyle(
             color: (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.5),
-            fontSize: 16,
+            fontSize: 20,
           ),
         ),
       ],
@@ -248,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'Chưa có tài khoản?',
             style: TextStyle(
                 color: (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.4),
-                fontSize: 13),
+                fontSize: 16),
           ),
         ),
         Expanded(child: Divider(color: color)),
