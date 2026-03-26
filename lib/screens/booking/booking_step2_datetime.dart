@@ -1,6 +1,3 @@
-// lib/screens/booking/booking_step2_datetime.dart
-// Bước 2: Chọn ngày và giờ
-
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'booking_step3_location.dart';
@@ -23,10 +20,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String? _selectedTime;
   final DateTime _firstDay = DateTime.now().add(const Duration(days: 1));
-  final DateTime _lastDay =
-      DateTime.now().add(const Duration(days: 90));
+  final DateTime _lastDay = DateTime.now().add(const Duration(days: 90));
 
-  // Các khung giờ có sẵn
   final List<String> _timeSlots = [
     '07:00', '08:00', '09:00', '10:00', '11:00',
     '13:00', '14:00', '15:00', '16:00', '17:00',
@@ -62,13 +57,118 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
   }
 
+  // ── Step Indicator Helpers ──────────────────────────────────
+
+  Widget _buildStepIndicator(bool isDark) {
+    final labels = ['Dịch vụ', 'Ngày giờ', 'Địa điểm', 'Xác nhận'];
+    const activeStep = 2;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _stepCircle(1, activeStep, true, isDark),
+              Expanded(child: _stepConnector(true, isDark)),
+              _stepCircle(2, activeStep, false, isDark),
+              Expanded(child: _stepConnector(false, isDark)),
+              _stepCircle(3, activeStep, false, isDark),
+              Expanded(child: _stepConnector(false, isDark)),
+              _stepCircle(4, activeStep, false, isDark),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _stepLabel(labels[0], 1 == activeStep, isDark, done: true),
+              const Expanded(child: SizedBox()),
+              _stepLabel(labels[1], 2 == activeStep, isDark),
+              const Expanded(child: SizedBox()),
+              _stepLabel(labels[2], 3 == activeStep, isDark),
+              const Expanded(child: SizedBox()),
+              _stepLabel(labels[3], 4 == activeStep, isDark),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepCircle(int step, int active, bool done, bool isDark) {
+    final isActive = step == active;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: done
+            ? AppTheme.success
+            : isActive
+            ? AppTheme.secondary
+            : (isDark ? AppTheme.inputFill : Colors.grey.withOpacity(0.15)),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isActive ? AppTheme.secondary : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: done
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+            : Text(
+          '$step',
+          style: TextStyle(
+            color: isActive
+                ? Colors.white
+                : (isDark ? Colors.white38 : Colors.grey),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepConnector(bool done, bool isDark) {
+    return Container(
+      height: 2,
+      color: done
+          ? AppTheme.success.withOpacity(0.5)
+          : (isDark ? Colors.white12 : Colors.grey.withOpacity(0.2)),
+    );
+  }
+
+  Widget _stepLabel(String label, bool isActive, bool isDark,
+      {bool done = false}) {
+    return SizedBox(
+      width: 28,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: done
+              ? AppTheme.success
+              : isActive
+              ? AppTheme.secondary
+              : (isDark ? Colors.white38 : Colors.grey),
+          fontSize: 10,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+    );
+  }
+
+  // ── Other Widgets ───────────────────────────────────────────
+
   PreferredSizeWidget _buildAppBar(bool isDark) {
     return AppBar(
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
       leading: IconButton(
         icon: Icon(Icons.arrow_back_ios_rounded,
-            color: isDark ? Colors.white : AppTheme.lightTextPrimary, size: 20),
+            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+            size: 20),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text('Chọn ngày & giờ',
@@ -80,80 +180,6 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
   }
 
-  Widget _buildStepIndicator(bool isDark) {
-    final labels = ['Dịch vụ', 'Ngày giờ', 'Địa điểm', 'Xác nhận'];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(
-        children: List.generate(4, (i) {
-          final isActive = i == 1;
-          final isDone = i == 0;
-          return Expanded(
-            child: Row(
-              children: [
-                Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? AppTheme.secondary
-                            : isDone
-                                ? AppTheme.success
-                                : (isDark
-                                    ? AppTheme.inputFill
-                                    : Colors.grey.withOpacity(0.15)),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: isDone
-                            ? const Icon(Icons.check_rounded,
-                                color: Colors.white, size: 14)
-                            : Text('${i + 1}',
-                                style: TextStyle(
-                                    color: isActive || isDone
-                                        ? Colors.white
-                                        : (isDark
-                                            ? Colors.white38
-                                            : Colors.grey),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(labels[i],
-                        style: TextStyle(
-                            color: isActive
-                                ? AppTheme.secondary
-                                : isDone
-                                    ? AppTheme.success
-                                    : (isDark ? Colors.white38 : Colors.grey),
-                            fontSize: 10,
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400)),
-                  ],
-                ),
-                if (i < 3)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.only(bottom: 18),
-                      color: isDone
-                          ? AppTheme.success.withOpacity(0.5)
-                          : (isDark
-                              ? Colors.white12
-                              : Colors.grey.withOpacity(0.2)),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
   Widget _buildCalendar(bool isDark) {
     return Container(
       decoration: BoxDecoration(
@@ -161,14 +187,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.07),
+              color: isDark
+                  ? Colors.black26
+                  : Colors.grey.withOpacity(0.07),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
       ),
       child: Column(
         children: [
-          // Header tháng
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
             child: Row(
@@ -176,19 +203,22 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 Text(
                   _monthYearLabel(_selectedDate),
                   style: TextStyle(
-                      color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      color: isDark
+                          ? Colors.white
+                          : AppTheme.lightTextPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 16),
                 ),
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.chevron_left_rounded,
-                      color: isDark ? Colors.white54 : Colors.grey),
+                      color:
+                      isDark ? Colors.white54 : Colors.grey),
                   onPressed: () {
                     final prev = DateTime(
                         _selectedDate.year, _selectedDate.month - 1, 1);
-                    if (!prev.isBefore(
-                        DateTime(_firstDay.year, _firstDay.month, 1))) {
+                    if (!prev.isBefore(DateTime(
+                        _firstDay.year, _firstDay.month, 1))) {
                       setState(() => _selectedDate = DateTime(
                           prev.year, prev.month, _selectedDate.day));
                     }
@@ -196,12 +226,13 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.chevron_right_rounded,
-                      color: isDark ? Colors.white54 : Colors.grey),
+                      color:
+                      isDark ? Colors.white54 : Colors.grey),
                   onPressed: () {
                     final next = DateTime(
                         _selectedDate.year, _selectedDate.month + 1, 1);
-                    if (!next.isAfter(
-                        DateTime(_lastDay.year, _lastDay.month, 1))) {
+                    if (!next.isAfter(DateTime(
+                        _lastDay.year, _lastDay.month, 1))) {
                       setState(() => _selectedDate = DateTime(
                           next.year, next.month, _selectedDate.day));
                     }
@@ -210,29 +241,27 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
               ],
             ),
           ),
-          // Ngày trong tuần header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
                   .map((d) => Expanded(
-                        child: Center(
-                          child: Text(d,
-                              style: TextStyle(
-                                  color: d == 'CN'
-                                      ? AppTheme.secondary
-                                      : (isDark
-                                          ? Colors.white38
-                                          : Colors.grey),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ))
+                child: Center(
+                  child: Text(d,
+                      style: TextStyle(
+                          color: d == 'CN'
+                              ? AppTheme.secondary
+                              : (isDark
+                              ? Colors.white38
+                              : Colors.grey),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ))
                   .toList(),
             ),
           ),
           const SizedBox(height: 8),
-          // Calendar grid
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
             child: _buildCalendarGrid(isDark),
@@ -244,10 +273,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   Widget _buildCalendarGrid(bool isDark) {
     final firstOfMonth =
-        DateTime(_selectedDate.year, _selectedDate.month, 1);
+    DateTime(_selectedDate.year, _selectedDate.month, 1);
     final daysInMonth =
         DateTime(_selectedDate.year, _selectedDate.month + 1, 0).day;
-    // Monday=1, so offset = weekday-1
     final startOffset = (firstOfMonth.weekday - 1) % 7;
     final totalCells = startOffset + daysInMonth;
     final rows = (totalCells / 7).ceil();
@@ -263,8 +291,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
               return const Expanded(child: SizedBox(height: 40));
             }
 
-            final date =
-                DateTime(_selectedDate.year, _selectedDate.month, day);
+            final date = DateTime(
+                _selectedDate.year, _selectedDate.month, day);
             final isSelected = date.day == _selectedDate.day &&
                 date.month == _selectedDate.month &&
                 date.year == _selectedDate.year;
@@ -276,9 +304,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 onTap: isPast
                     ? null
                     : () => setState(() {
-                          _selectedDate = date;
-                          _selectedTime = null; // reset giờ khi đổi ngày
-                        }),
+                  _selectedDate = date;
+                  _selectedTime = null;
+                }),
                 child: Container(
                   height: 40,
                   margin: const EdgeInsets.all(2),
@@ -295,12 +323,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                         color: isSelected
                             ? Colors.white
                             : isPast
-                                ? (isDark ? Colors.white12 : Colors.grey[300])
-                                : isSunday
-                                    ? AppTheme.secondary.withOpacity(0.8)
-                                    : (isDark
-                                        ? Colors.white
-                                        : AppTheme.lightTextPrimary),
+                            ? (isDark
+                            ? Colors.white12
+                            : Colors.grey[300])
+                            : isSunday
+                            ? AppTheme.secondary
+                            .withOpacity(0.8)
+                            : (isDark
+                            ? Colors.white
+                            : AppTheme.lightTextPrimary),
                         fontWeight: isSelected
                             ? FontWeight.w700
                             : FontWeight.w500,
@@ -323,7 +354,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
       children: [
         Text('Chọn khung giờ',
             style: TextStyle(
-                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color:
+                isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
@@ -355,25 +387,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.secondary
-                      : (isDark
-                          ? AppTheme.inputFill
-                          : Colors.white),
+                      : (isDark ? AppTheme.inputFill : Colors.white),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSelected
                         ? AppTheme.secondary
                         : (isDark
-                            ? Colors.white12
-                            : Colors.grey.withOpacity(0.2)),
+                        ? Colors.white12
+                        : Colors.grey.withOpacity(0.2)),
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                              color: AppTheme.secondary.withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2))
-                        ]
-                      : [],
                 ),
                 child: Center(
                   child: Text(
@@ -381,9 +403,12 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white
-                          : (isDark ? Colors.white70 : AppTheme.lightTextPrimary),
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                          : (isDark
+                          ? Colors.white70
+                          : AppTheme.lightTextPrimary),
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       fontSize: 13,
                     ),
                   ),
@@ -406,25 +431,24 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         child: ElevatedButton(
           onPressed: canProceed
               ? () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BookingStep3Screen(
-                        selectedPhotographer: widget.selectedPhotographer,
-                        selectedMakeuper: widget.selectedMakeuper,
-                        bookingDate: _selectedDate,
-                        timeSlot: _selectedTime!,
-                      ),
-                    ),
-                  )
+            context,
+            MaterialPageRoute(
+              builder: (_) => BookingStep3Screen(
+                selectedPhotographer: widget.selectedPhotographer,
+                selectedMakeuper: widget.selectedMakeuper,
+                bookingDate: _selectedDate,
+                timeSlot: _selectedTime!,
+              ),
+            ),
+          )
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.secondary,
-            disabledBackgroundColor:
-                isDark ? AppTheme.inputFill : Colors.grey.withOpacity(0.15),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            elevation: canProceed ? 4 : 0,
-            shadowColor: AppTheme.secondary.withOpacity(0.4),
+            disabledBackgroundColor: isDark
+                ? AppTheme.inputFill
+                : Colors.grey.withOpacity(0.15),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
