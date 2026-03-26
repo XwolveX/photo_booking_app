@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../chat/chat_screen.dart';
 import '../shared/public_profile_screen.dart';
+import '../payment/payment_screen.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -247,6 +248,7 @@ class _BookingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = data['status'] as String? ?? 'pending';
+    final paymentStatus = data['paymentStatus'] as String?;
     final statusInfo = _getStatusInfo(status);
     final bookingDate = (data['bookingDate'] as Timestamp?)?.toDate();
     final dateStr = bookingDate != null
@@ -263,27 +265,71 @@ class _BookingCard extends StatelessWidget {
     final makeuperPrice = (data['makeuperPrice'] as num?)?.toInt() ?? 0;
     final totalPrice = photographerPrice + makeuperPrice;
 
+    // Needs payment: confirmed + not paid yet
+    final needsPayment = status == 'confirmed' && paymentStatus != 'paid';
+    final isPaid = paymentStatus == 'paid';
+    // Can complete: paid + status still confirmed
+    final canComplete = status == 'confirmed' && isPaid;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.inputFill : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusInfo.color.withOpacity(0.3), width: 1.5),
-        boxShadow: [BoxShadow(color: statusInfo.color.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(
+          color: needsPayment
+              ? Colors.orange.withOpacity(0.5)
+              : statusInfo.color.withOpacity(0.3),
+          width: needsPayment ? 2 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (needsPayment ? Colors.orange : statusInfo.color).withOpacity(0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── Header ──
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: statusInfo.color.withOpacity(0.08),
+            color: (needsPayment ? Colors.orange : statusInfo.color).withOpacity(0.08),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
           ),
           child: Row(children: [
-            Icon(statusInfo.icon, color: statusInfo.color, size: 15),
+            Icon(
+              needsPayment ? Icons.payment_rounded : statusInfo.icon,
+              color: needsPayment ? Colors.orange : statusInfo.color,
+              size: 15,
+            ),
             const SizedBox(width: 6),
-            Text(statusInfo.label,
-                style: TextStyle(color: statusInfo.color, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text(
+              needsPayment ? 'Chờ thanh toán' : statusInfo.label,
+              style: TextStyle(
+                color: needsPayment ? Colors.orange : statusInfo.color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+            if (isPaid) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.success.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.verified_rounded, color: AppTheme.success, size: 10),
+                  const SizedBox(width: 3),
+                  const Text('Đã thanh toán',
+                      style: TextStyle(
+                          color: AppTheme.success, fontSize: 9, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ],
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -302,7 +348,7 @@ class _BookingCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Provider rows (tap để xem profile) ──
+            // ── Provider rows ──
             if (photographerName != null)
               _ProviderRow(
                 icon: Icons.camera_alt_rounded,
@@ -341,7 +387,9 @@ class _BookingCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(child: Text(address,
                   maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[700], fontSize: 12, height: 1.4))),
+                  style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey[700],
+                      fontSize: 12, height: 1.4))),
             ]),
 
             // ── Ghi chú ──
@@ -352,7 +400,9 @@ class _BookingCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(child: Text(note,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 12, height: 1.4))),
+                    style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.grey[600],
+                        fontSize: 12, height: 1.4))),
               ]),
             ],
 
@@ -362,14 +412,18 @@ class _BookingCard extends StatelessWidget {
             Row(children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Tổng tiền',
-                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+                    style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
                 const SizedBox(height: 2),
                 Text(totalPrice > 0 ? '${_formatPrice(totalPrice)}đ' : 'Chưa có giá',
                     style: const TextStyle(
-                        color: AppTheme.roleUser, fontSize: 18, fontWeight: FontWeight.w800)),
+                        color: AppTheme.roleUser,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800)),
               ]),
               const Spacer(),
-              // ← FIX: dùng if/else if thay vì nhiều if riêng lẻ
+
+              // Action buttons
               if (status == 'pending')
                 _OutlineButton(
                   label: 'Hủy booking',
@@ -377,56 +431,135 @@ class _BookingCard extends StatelessWidget {
                   isDark: isDark,
                   onTap: () => _showCancelDialog(context, bookingId),
                 )
-              else if (status == 'confirmed')
-                _OutlineButton(
-                  label: 'Nhắn tin',
-                  color: AppTheme.roleUser,
-                  isDark: isDark,
-                  onTap: () async {
-                    final me = context.read<AuthProvider>().currentUser!;
-                    final providerId = photographerId ?? makeuperId;
-                    final providerName = photographerName ?? makeuperName ?? '';
-                    final providerRole = photographerId != null ? 'photographer' : 'makeuper';
-                    if (providerId == null) return;
-                    try {
-                      final chatId = await ChatService.getOrCreateChat(
-                        me: me,
-                        otherId: providerId,
-                        otherName: providerName,
-                        otherRole: providerRole,
-                      );
-                      if (context.mounted) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => ChatScreen(
-                            chatId: chatId,
-                            otherUserId: providerId,
-                            otherUserName: providerName,
-                            otherUserRole: providerRole,
-                          ),
-                        ));
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Lỗi: $e'),
-                          backgroundColor: AppTheme.error,
-                          behavior: SnackBarBehavior.floating,
-                        ));
-                      }
-                    }
+              else if (needsPayment)
+              // Payment button — most prominent
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PaymentScreen(
+                          bookingId: bookingId,
+                          amount: totalPrice.toDouble(),
+                          photographerName: photographerName,
+                          makeuperName: makeuperName,
+                          bookingDate: dateStr,
+                          timeSlot: timeSlot,
+                        ),
+                      ),
+                    );
                   },
-                )
-              else if (status == 'completed')
-                  _OutlineButton(
-                    label: '⭐ Đánh giá',
-                    color: Colors.amber,
-                    isDark: isDark,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('⭐ Tính năng đánh giá sắp ra mắt!'),
-                            behavior: SnackBarBehavior.floating)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppTheme.secondary, AppTheme.secondary.withOpacity(0.8)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.secondary.withOpacity(0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.payment_rounded, color: Colors.white, size: 16),
+                      SizedBox(width: 6),
+                      Text('Thanh toán ngay',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13)),
+                    ]),
                   ),
+                )
+              else if (canComplete)
+                  _OutlineButton(
+                    label: '✅ Hoàn thành',
+                    color: AppTheme.success,
+                    isDark: isDark,
+                    onTap: () => _showCompleteDialog(context, bookingId,
+                        photographerId, makeuperId, totalPrice.toDouble()),
+                  )
+                else if (status == 'confirmed' && isPaid)
+                    _OutlineButton(
+                      label: 'Nhắn tin',
+                      color: AppTheme.roleUser,
+                      isDark: isDark,
+                      onTap: () async {
+                        final me = context.read<AuthProvider>().currentUser!;
+                        final providerId = photographerId ?? makeuperId;
+                        final providerName = photographerName ?? makeuperName ?? '';
+                        final providerRole = photographerId != null ? 'photographer' : 'makeuper';
+                        if (providerId == null) return;
+                        try {
+                          final chatId = await ChatService.getOrCreateChat(
+                            me: me,
+                            otherId: providerId,
+                            otherName: providerName,
+                            otherRole: providerRole,
+                          );
+                          if (context.mounted) {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => ChatScreen(
+                                chatId: chatId,
+                                otherUserId: providerId,
+                                otherUserName: providerName,
+                                otherUserRole: providerRole,
+                              ),
+                            ));
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Lỗi: $e'),
+                              backgroundColor: AppTheme.error,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        }
+                      },
+                    )
+                  else if (status == 'completed')
+                      _OutlineButton(
+                        label: '⭐ Đánh giá',
+                        color: Colors.amber,
+                        isDark: isDark,
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('⭐ Tính năng đánh giá sắp ra mắt!'),
+                                behavior: SnackBarBehavior.floating)),
+                      ),
             ]),
+
+            // ── Thông báo cần thanh toán ──
+            if (needsPayment) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 15),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Provider đã xác nhận! Vui lòng thanh toán để booking có hiệu lực.',
+                      style: TextStyle(
+                        color: isDark ? Colors.white60 : Colors.grey[700],
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
 
             // ── Provider status chips ──
             if (status == 'pending') ...[
@@ -492,7 +625,8 @@ class _BookingCard extends StatelessWidget {
           TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('Không',
-                  style: TextStyle(color: isDark ? Colors.white38 : Colors.grey))),
+                  style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.grey))),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -527,6 +661,182 @@ class _BookingCard extends StatelessWidget {
     );
   }
 
+  void _showCompleteDialog(
+      BuildContext context,
+      String bookingId,
+      String? photographerId,
+      String? makeuperId,
+      double amount,
+      ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.surface : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Xác nhận hoàn thành?',
+          style: TextStyle(
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+              fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bạn xác nhận đã nhận được dịch vụ và hài lòng?',
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[700]),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.success.withOpacity(0.25)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppTheme.success, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Sau khi xác nhận, ${_formatPrice(amount.toInt())}đ sẽ được chuyển đến provider.',
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey[700],
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Chưa',
+                  style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _markCompleteAndPayout(
+                  context, bookingId, photographerId, makeuperId, amount);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.success,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Xác nhận hoàn thành',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markCompleteAndPayout(
+      BuildContext context,
+      String bookingId,
+      String? photographerId,
+      String? makeuperId,
+      double totalAmount,
+      ) async {
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final bookingRef =
+      FirebaseFirestore.instance.collection('bookings').doc(bookingId);
+
+      // Mark booking completed
+      batch.update(bookingRef, {
+        'status': 'completed',
+        'userCompletedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Add balance to photographer
+      if (photographerId != null) {
+        final photoPrice = (data['photographerPrice'] as num?)?.toDouble() ?? 0;
+        if (photoPrice > 0) {
+          final providerRef =
+          FirebaseFirestore.instance.collection('users').doc(photographerId);
+          batch.update(providerRef, {
+            'balance': FieldValue.increment(photoPrice),
+            'totalEarnings': FieldValue.increment(photoPrice),
+            'totalBookings': FieldValue.increment(1),
+          });
+
+          // Add payout transaction record
+          final txRef =
+          FirebaseFirestore.instance.collection('transactions').doc();
+          batch.set(txRef, {
+            'userId': photographerId,
+            'bookingId': bookingId,
+            'amount': photoPrice,
+            'type': 'payout',
+            'status': 'completed',
+            'description': 'Thanh toán từ booking #${bookingId.substring(0, 8).toUpperCase()}',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      // Add balance to makeuper
+      if (makeuperId != null) {
+        final makeupPrice = (data['makeuperPrice'] as num?)?.toDouble() ?? 0;
+        if (makeupPrice > 0) {
+          final providerRef =
+          FirebaseFirestore.instance.collection('users').doc(makeuperId);
+          batch.update(providerRef, {
+            'balance': FieldValue.increment(makeupPrice),
+            'totalEarnings': FieldValue.increment(makeupPrice),
+            'totalBookings': FieldValue.increment(1),
+          });
+
+          final txRef =
+          FirebaseFirestore.instance.collection('transactions').doc();
+          batch.set(txRef, {
+            'userId': makeuperId,
+            'bookingId': bookingId,
+            'amount': makeupPrice,
+            'type': 'payout',
+            'status': 'completed',
+            'description': 'Thanh toán từ booking #${bookingId.substring(0, 8).toUpperCase()}',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      await batch.commit();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '🎉 Hoàn thành! ${_formatPrice(totalAmount.toInt())}đ đã được chuyển đến provider.'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   _StatusInfo _getStatusInfo(String status) {
     switch (status) {
       case 'confirmed':
@@ -545,7 +855,7 @@ class _BookingCard extends StatelessWidget {
     return days[(w - 1).clamp(0, 6)];
   }
 
-  String _formatPrice(int price) {
+  static String _formatPrice(int price) {
     final s = price.toString();
     final buffer = StringBuffer();
     for (int i = 0; i < s.length; i++) {
@@ -556,7 +866,7 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
-// ── Provider Row (có thể tap để xem profile) ─────────────────
+// ── Provider Row ──────────────────────────────────────────────
 class _ProviderRow extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -604,7 +914,8 @@ class _ProviderRow extends StatelessWidget {
                 ],
               ]),
               Text(role,
-                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+                  style: TextStyle(
+                      color: color, fontSize: 11, fontWeight: FontWeight.w500)),
             ])),
         if (price > 0)
           Text('${_fmt(price)}đ',
@@ -651,7 +962,8 @@ class _OutlineButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withOpacity(0.4))),
         child: Text(label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -662,7 +974,8 @@ class _StatusChip extends StatelessWidget {
   final Color color;
   final bool isDark;
 
-  const _StatusChip({required this.label, required this.color, required this.isDark});
+  const _StatusChip(
+      {required this.label, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -673,7 +986,8 @@ class _StatusChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: color.withOpacity(0.3))),
       child: Text(label,
-          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -736,9 +1050,12 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
         color: isDark ? AppTheme.primary : AppTheme.lightBg, child: tabBar);
   }
 
-  @override double get maxExtent => 56;
-  @override double get minExtent => 56;
-  @override bool shouldRebuild(_TabBarDelegate old) => old.isDark != isDark;
+  @override
+  double get maxExtent => 56;
+  @override
+  double get minExtent => 56;
+  @override
+  bool shouldRebuild(_TabBarDelegate old) => old.isDark != isDark;
 }
 
 class _StatusFilter {

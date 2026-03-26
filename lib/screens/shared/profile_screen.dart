@@ -1,4 +1,9 @@
+// lib/screens/shared/profile_screen.dart
+
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_provider.dart';
@@ -25,9 +30,12 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isUploadingAvatar = false;
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
   late TextEditingController _bioCtrl;
+
+  File? _pendingAvatarFile; // ảnh chọn chưa upload (chỉ dùng khi ở edit view)
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  // ── Role helpers ───────────────────────────────────────────
   Color _roleColor(UserRole role) {
     switch (role) {
       case UserRole.photographer:
@@ -71,6 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _snack(String msg, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: color,
@@ -79,6 +89,130 @@ class _ProfileScreenState extends State<ProfileScreen>
     ));
   }
 
+  // ── Pick avatar from gallery or camera ────────────────────
+  Future<void> _pickAvatar({required bool fromCamera}) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      maxWidth: 600,
+      maxHeight: 600,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    setState(() => _pendingAvatarFile = File(picked.path));
+  }
+
+  // ── Show pick source bottom sheet ─────────────────────────
+  void _showPickSheet(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Handle
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white24 : Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Text(
+            'Chọn ảnh đại diện',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(
+              child: _PickOption(
+                icon: Icons.photo_library_rounded,
+                label: 'Thư viện',
+                color: AppTheme.secondary,
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAvatar(fromCamera: false);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _PickOption(
+                icon: Icons.camera_alt_rounded,
+                label: 'Chụp ảnh',
+                color: Colors.blue,
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAvatar(fromCamera: true);
+                },
+              ),
+            ),
+          ]),
+          if (_pendingAvatarFile != null) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                setState(() => _pendingAvatarFile = null);
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.delete_outline_rounded,
+                        color: AppTheme.error, size: 18),
+                    SizedBox(width: 8),
+                    Text('Xóa ảnh đã chọn',
+                        style: TextStyle(
+                            color: AppTheme.error,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  // ── Upload avatar to Firebase Storage ─────────────────────
+  Future<String?> _uploadAvatarFile(File file, String uid) async {
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('avatars/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final task = await ref.putFile(
+        file,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      return await task.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Avatar upload error: $e');
+      return null;
+    }
+  }
+
+  // ── Save profile (with optional avatar) ───────────────────
   Future<void> _saveProfile() async {
     if (_nameCtrl.text.trim().isEmpty) {
       _snack('Họ tên không được để trống', AppTheme.error);
@@ -86,14 +220,43 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
     setState(() => _isSaving = true);
     final uid = context.read<AuthProvider>().currentUser!.uid;
+
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      String? newAvatarUrl;
+
+      // Upload avatar nếu có chọn ảnh mới
+      if (_pendingAvatarFile != null) {
+        setState(() => _isUploadingAvatar = true);
+        newAvatarUrl = await _uploadAvatarFile(_pendingAvatarFile!, uid);
+        setState(() => _isUploadingAvatar = false);
+
+        if (newAvatarUrl == null) {
+          _snack('Không thể tải ảnh lên. Vui lòng thử lại.', AppTheme.error);
+          setState(() => _isSaving = false);
+          return;
+        }
+      }
+
+      final updateData = <String, dynamic>{
         'fullName': _nameCtrl.text.trim(),
         'phone': _phoneCtrl.text.trim(),
         'bio': _bioCtrl.text.trim(),
-      });
+      };
+
+      if (newAvatarUrl != null) {
+        updateData['avatarUrl'] = newAvatarUrl;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .update(updateData);
+
       if (mounted) {
-        setState(() => _isEditing = false);
+        setState(() {
+          _isEditing = false;
+          _pendingAvatarFile = null;
+        });
         _snack('✅ Đã cập nhật thông tin!', AppTheme.success);
       }
     } catch (e) {
@@ -127,12 +290,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
               minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Đăng xuất',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -214,7 +379,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ── AppBar ────────────────────────────────────────────────
   SliverAppBar _buildAppBar(bool isDark, UserModel user, Color color) {
     return SliverAppBar(
       pinned: true,
@@ -228,19 +392,17 @@ class _ProfileScreenState extends State<ProfileScreen>
             fontSize: 17,
           )),
       actions: [
-        // Booking history
         IconButton(
           tooltip: 'Lịch sử booking',
           icon: Stack(clipBehavior: Clip.none, children: [
             Icon(Icons.calendar_month_rounded,
-                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color:
+                isDark ? Colors.white : AppTheme.lightTextPrimary,
                 size: 24),
             Positioned(
-              top: -1,
-              right: -1,
+              top: -1, right: -1,
               child: Container(
-                width: 8,
-                height: 8,
+                width: 8, height: 8,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
@@ -255,20 +417,19 @@ class _ProfileScreenState extends State<ProfileScreen>
               MaterialPageRoute(
                   builder: (_) => const BookingHistoryScreen())),
         ),
-        // Tag notifications (badge pending count)
         PendingTagBadge(
           uid: user.uid,
           child: IconButton(
             tooltip: 'Thẻ gắn tag',
             icon: Icon(Icons.person_pin_rounded,
-                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color:
+                isDark ? Colors.white : AppTheme.lightTextPrimary,
                 size: 24),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const TagRequestsScreen())),
           ),
         ),
-        // Theme toggle
         IconButton(
           icon: Icon(
             context.watch<ThemeProvider>().isDarkMode
@@ -279,12 +440,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           onPressed: () => context.read<ThemeProvider>().toggleTheme(),
         ),
-        // Menu
         PopupMenuButton<String>(
           icon: Icon(Icons.menu_rounded,
               color: isDark ? Colors.white : AppTheme.lightTextPrimary),
           color: isDark ? AppTheme.surface : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           onSelected: (v) {
             if (v == 'edit') setState(() => _isEditing = true);
             if (v == 'logout') _confirmLogout();
@@ -309,32 +470,44 @@ class _ProfileScreenState extends State<ProfileScreen>
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 10),
         Text(label,
-            style: TextStyle(color: color, fontSize: 14,
-                fontWeight: value == 'logout' ? FontWeight.w600 : FontWeight.normal)),
+            style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: value == 'logout'
+                    ? FontWeight.w600
+                    : FontWeight.normal)),
       ]),
     );
   }
 
-  // ── Header info ────────────────────────────────────────────
   SliverToBoxAdapter _buildHeaderInfo(
       bool isDark, UserModel user, Color color) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Avatar + Stats
+        child:
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            _buildAvatar(user, color, isDark),
+            // Avatar — tap để chụp/chọn ảnh nhanh (không cần vào edit)
+            _AvatarWidget(
+              user: user,
+              color: color,
+              isDark: isDark,
+              size: 86,
+              isUploading: false,
+              pendingFile: null,
+              onTap: () => _showQuickAvatarSheet(isDark, user),
+            ),
             const SizedBox(width: 28),
             Expanded(child: _buildStats(isDark, user, color)),
           ]),
           const SizedBox(height: 12),
 
-          // Name + role badge
           Row(children: [
             Text(user.fullName,
                 style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    color:
+                    isDark ? Colors.white : AppTheme.lightTextPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700)),
             const SizedBox(width: 6),
@@ -349,17 +522,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                 const SizedBox(width: 3),
                 Text(user.roleDisplayName,
                     style: TextStyle(
-                        color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600)),
               ]),
             ),
           ]),
 
-          // Bio
           const SizedBox(height: 4),
           if (user.bio != null && user.bio!.isNotEmpty)
             Text(user.bio!,
                 style: TextStyle(
-                    color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? Colors.white70
+                        : AppTheme.lightTextSecondary,
                     fontSize: 13,
                     height: 1.4))
           else
@@ -367,10 +543,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               onTap: () => setState(() => _isEditing = true),
               child: Text('+ Thêm tiểu sử',
                   style: TextStyle(
-                      color: color, fontSize: 13, fontWeight: FontWeight.w500)),
+                      color: color,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500)),
             ),
 
-          // Contact
           const SizedBox(height: 4),
           Row(children: [
             Icon(Icons.email_outlined,
@@ -396,8 +573,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             ]),
           ],
           const SizedBox(height: 12),
-
-          // Action buttons
           _buildActionButtons(isDark, user, color),
           const SizedBox(height: 4),
         ]),
@@ -405,55 +580,99 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildAvatar(UserModel user, Color color, bool isDark) {
-    return Stack(children: [
-      Container(
-        width: 86,
-        height: 86,
+  // Quick avatar sheet (từ profile view, không cần vào edit)
+  void _showQuickAvatarSheet(bool isDark, UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: isDark ? AppTheme.surface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        padding: const EdgeInsets.all(2.5),
-        child: Container(
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? AppTheme.primary : Colors.white),
-          padding: const EdgeInsets.all(2),
-          child: ClipOval(
-            child: user.avatarUrl != null
-                ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
-                : Container(
-                color: color.withOpacity(0.12),
-                child: Icon(_roleIcon(user.role), color: color, size: 38)),
-          ),
-        ),
-      ),
-      Positioned(
-        bottom: 0,
-        right: 0,
-        child: GestureDetector(
-          onTap: () => _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
-          child: Container(
-            width: 26,
-            height: 26,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: isDark ? AppTheme.primary : Colors.white, width: 2),
-              boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6)],
+              color: isDark ? Colors.white24 : Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
             ),
-            child: const Icon(Icons.camera_alt_rounded,
-                color: Colors.white, size: 12),
           ),
-        ),
+          Text('Ảnh đại diện',
+              style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(
+              child: _PickOption(
+                icon: Icons.photo_library_rounded,
+                label: 'Thư viện',
+                color: AppTheme.secondary,
+                isDark: isDark,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _quickUploadAvatar(
+                      fromCamera: false, uid: user.uid, isDark: isDark);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _PickOption(
+                icon: Icons.camera_alt_rounded,
+                label: 'Chụp ảnh',
+                color: Colors.blue,
+                isDark: isDark,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _quickUploadAvatar(
+                      fromCamera: true, uid: user.uid, isDark: isDark);
+                },
+              ),
+            ),
+          ]),
+        ]),
       ),
-    ]);
+    );
+  }
+
+  // Upload avatar trực tiếp từ profile view (không cần lưu profile)
+  Future<void> _quickUploadAvatar(
+      {required bool fromCamera,
+        required String uid,
+        required bool isDark}) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      maxWidth: 600,
+      maxHeight: 600,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    _snack('⏳ Đang tải ảnh lên...', Colors.blue);
+
+    try {
+      final url =
+      await _uploadAvatarFile(File(picked.path), uid);
+      if (url == null) throw Exception('Upload thất bại');
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .update({'avatarUrl': url});
+
+      if (mounted) _snack('✅ Đã cập nhật ảnh đại diện!', AppTheme.success);
+    } catch (e) {
+      if (mounted) _snack('Lỗi tải ảnh: $e', AppTheme.error);
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
   }
 
   Widget _buildStats(bool isDark, UserModel user, Color color) {
@@ -478,15 +697,22 @@ class _ProfileScreenState extends State<ProfileScreen>
             final bookings = bookSnap.data?.docs ?? [];
             final posts = postSnap.data?.docs ?? [];
             final completed = bookings
-                .where((d) => (d.data() as Map)['status'] == 'completed')
+                .where((d) =>
+            (d.data() as Map)['status'] == 'completed')
                 .length;
             final rating = user.rating ?? 0.0;
 
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _StatCol(value: '${posts.length}', label: 'Bài viết', isDark: isDark),
-                _StatCol(value: '${bookings.length}', label: 'Booking', isDark: isDark),
+                _StatCol(
+                    value: '${posts.length}',
+                    label: 'Bài viết',
+                    isDark: isDark),
+                _StatCol(
+                    value: '${bookings.length}',
+                    label: 'Booking',
+                    isDark: isDark),
                 _StatCol(
                   value: completed > 0
                       ? '$completed'
@@ -536,7 +762,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     ]);
   }
 
-  // ── TabBar (Bài viết | Được gắn thẻ) ──────────────────────
   SliverPersistentHeader _buildTabBarSliver(
       bool isDark, Color color, String uid) {
     return SliverPersistentHeader(
@@ -546,7 +771,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: TabBar(
           controller: _tabCtrl,
           labelColor: color,
-          unselectedLabelColor: isDark ? Colors.white24 : Colors.grey[300],
+          unselectedLabelColor:
+          isDark ? Colors.white24 : Colors.grey[300],
           indicatorColor: color,
           indicatorWeight: 1.5,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -559,10 +785,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Icon(Icons.grid_view_rounded, size: 17),
                 SizedBox(width: 5),
                 Text('Bài viết',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
               ]),
             ),
-            // Tab "Được gắn thẻ" với badge count
             Tab(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -572,29 +798,32 @@ class _ProfileScreenState extends State<ProfileScreen>
                     .snapshots(),
                 builder: (context, snap) {
                   final count = snap.data?.docs.length ?? 0;
-                  return Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.person_pin_rounded, size: 17),
-                    const SizedBox(width: 5),
-                    const Text('Được gắn thẻ',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    if (count > 0) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text('$count',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ]);
+                  return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.person_pin_rounded, size: 17),
+                        const SizedBox(width: 5),
+                        const Text('Được gắn thẻ',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
+                        if (count > 0) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text('$count',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ]);
                 },
               ),
             ),
@@ -614,7 +843,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         backgroundColor: isDark ? AppTheme.surface : Colors.white,
         elevation: 0,
         leading: TextButton(
-          onPressed: () => setState(() => _isEditing = false),
+          onPressed: () => setState(() {
+            _isEditing = false;
+            _pendingAvatarFile = null;
+          }),
           child: Text('Hủy',
               style: TextStyle(
                   color: isDark ? Colors.white54 : Colors.grey,
@@ -622,17 +854,19 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         leadingWidth: 64,
         title: const Text('Chỉnh sửa trang cá nhân',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            style:
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: _isSaving ? null : _saveProfile,
-            child: _isSaving
+            onPressed: (_isSaving || _isUploadingAvatar) ? null : _saveProfile,
+            child: _isSaving || _isUploadingAvatar
                 ? const SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppTheme.secondary))
+                    strokeWidth: 2,
+                    color: AppTheme.secondary))
                 : const Text('Lưu',
                 style: TextStyle(
                     color: AppTheme.secondary,
@@ -644,87 +878,131 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // Avatar editor
+          // ── Avatar editor ──────────────────────────────
           Center(
-            child: Stack(children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                      colors: [color, color.withOpacity(0.4)]),
+            child: Column(children: [
+              Stack(children: [
+                // Avatar preview
+                _AvatarWidget(
+                  user: user,
+                  color: color,
+                  isDark: isDark,
+                  size: 96,
+                  isUploading: _isUploadingAvatar,
+                  pendingFile: _pendingAvatarFile,
+                  onTap: () => _showPickSheet(isDark),
                 ),
-                padding: const EdgeInsets.all(3),
-                child: Container(
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark ? AppTheme.primary : Colors.white),
-                  padding: const EdgeInsets.all(2),
-                  child: ClipOval(
-                    child: user.avatarUrl != null
-                        ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
-                        : Container(
-                        color: color.withOpacity(0.12),
-                        child: Icon(_roleIcon(user.role),
-                            color: color, size: 44)),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: () => _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: isDark ? AppTheme.primary : Colors.white,
-                          width: 2),
+                // Camera badge
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: GestureDetector(
+                    onTap: () => _showPickSheet(isDark),
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: isDark
+                                ? AppTheme.primary
+                                : Colors.white,
+                            width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                              color: color.withOpacity(0.4),
+                              blurRadius: 8)
+                        ],
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded,
+                          color: Colors.white, size: 15),
                     ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 14),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              // Status text
+              GestureDetector(
+                onTap: () => _showPickSheet(isDark),
+                child: Text(
+                  _pendingAvatarFile != null
+                      ? '✅ Ảnh đã chọn — nhấn Lưu để cập nhật'
+                      : 'Nhấn để đổi ảnh đại diện',
+                  style: TextStyle(
+                    color: _pendingAvatarFile != null
+                        ? AppTheme.success
+                        : color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
+              // Preview badge nếu đã chọn ảnh
+              if (_pendingAvatarFile != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppTheme.success.withOpacity(0.3)),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.check_circle_rounded,
+                        color: AppTheme.success, size: 12),
+                    SizedBox(width: 5),
+                    Text('Sẽ upload khi bấm Lưu',
+                        style: TextStyle(
+                            color: AppTheme.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ],
             ]),
           ),
-          const SizedBox(height: 6),
-          TextButton(
-            onPressed: () =>
-                _snack('📷 Upload ảnh sắp ra mắt!', Colors.blue),
-            child: Text('Đổi ảnh đại diện',
-                style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          // Editable fields
+          // ── Editable fields ────────────────────────────
           _EditCard(isDark: isDark, children: [
-            _FieldRow(isDark: isDark, color: color,
-                label: 'Họ và tên', controller: _nameCtrl,
+            _FieldRow(
+                isDark: isDark,
+                color: color,
+                label: 'Họ và tên',
+                controller: _nameCtrl,
                 keyboardType: TextInputType.name),
             _Divider(isDark: isDark),
-            _FieldRow(isDark: isDark, color: color,
-                label: 'Số điện thoại', controller: _phoneCtrl,
+            _FieldRow(
+                isDark: isDark,
+                color: color,
+                label: 'Số điện thoại',
+                controller: _phoneCtrl,
                 keyboardType: TextInputType.phone),
             _Divider(isDark: isDark),
-            _FieldRow(isDark: isDark, color: color,
-                label: 'Tiểu sử', controller: _bioCtrl,
-                maxLines: 4, hint: 'Giới thiệu bản thân...'),
+            _FieldRow(
+                isDark: isDark,
+                color: color,
+                label: 'Tiểu sử',
+                controller: _bioCtrl,
+                maxLines: 4,
+                hint: 'Giới thiệu bản thân...'),
           ]),
           const SizedBox(height: 16),
 
-          // Read-only
+          // ── Read-only ──────────────────────────────────
           _EditCard(isDark: isDark, children: [
-            _ReadRow(isDark: isDark, label: 'Email',
-                value: user.email, note: 'Không thể thay đổi'),
+            _ReadRow(
+                isDark: isDark,
+                label: 'Email',
+                value: user.email,
+                note: 'Không thể thay đổi'),
             _Divider(isDark: isDark),
-            _ReadRow(isDark: isDark, label: 'Vai trò',
-                value: user.roleDisplayName, note: 'Cố định'),
+            _ReadRow(
+                isDark: isDark,
+                label: 'Vai trò',
+                value: user.roleDisplayName,
+                note: 'Cố định'),
           ]),
           const SizedBox(height: 32),
         ]),
@@ -734,14 +1012,159 @@ class _ProfileScreenState extends State<ProfileScreen>
 }
 
 // ══════════════════════════════════════════════════════════
-// POSTS GRID (3 col, Instagram-style)
+// AVATAR WIDGET — dùng chung ở cả profile view và edit view
+// ══════════════════════════════════════════════════════════
+class _AvatarWidget extends StatelessWidget {
+  final UserModel user;
+  final Color color;
+  final bool isDark;
+  final double size;
+  final bool isUploading;
+  final File? pendingFile;
+  final VoidCallback onTap;
+
+  const _AvatarWidget({
+    required this.user,
+    required this.color,
+    required this.isDark,
+    required this.size,
+    required this.isUploading,
+    required this.pendingFile,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [color, color.withOpacity(0.4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4)),
+          ],
+        ),
+        padding: const EdgeInsets.all(2.5),
+        child: Container(
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark ? AppTheme.primary : Colors.white),
+          padding: const EdgeInsets.all(2),
+          child: ClipOval(
+            child: isUploading
+                ? Container(
+              color: color.withOpacity(0.1),
+              child: Center(
+                child: SizedBox(
+                  width: size * 0.3,
+                  height: size * 0.3,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: color),
+                ),
+              ),
+            )
+                : pendingFile != null
+            // Preview ảnh mới chọn
+                ? Image.file(pendingFile!, fit: BoxFit.cover)
+                : user.avatarUrl != null
+            // Ảnh từ Firebase Storage
+                ? Image.network(
+              user.avatarUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  _placeholder(size),
+            )
+            // Placeholder icon
+                : _placeholder(size),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder(double size) {
+    return Container(
+      color: color.withOpacity(0.12),
+      child: Icon(
+        user.role == UserRole.photographer
+            ? Icons.camera_alt_rounded
+            : user.role == UserRole.makeuper
+            ? Icons.brush_rounded
+            : Icons.person_rounded,
+        color: color,
+        size: size * 0.4,
+      ),
+    );
+  }
+}
+
+// ── Pick Option tile ──────────────────────────────────────────
+class _PickOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _PickOption({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.12), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 10),
+          Text(label,
+              style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// POSTS GRID
 // ══════════════════════════════════════════════════════════
 class _PostsGrid extends StatelessWidget {
   final String uid;
   final Color color;
   final bool isDark;
 
-  const _PostsGrid({required this.uid, required this.color, required this.isDark});
+  const _PostsGrid(
+      {required this.uid, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -767,7 +1190,8 @@ class _PostsGrid extends StatelessWidget {
         }
         return GridView.builder(
           padding: const EdgeInsets.all(1),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate:
+          const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 1.5,
             mainAxisSpacing: 1.5,
@@ -776,7 +1200,8 @@ class _PostsGrid extends StatelessWidget {
           itemBuilder: (_, i) {
             final post = PostModel.fromFirestore(
                 docs[i].data() as Map<String, dynamic>, docs[i].id);
-            return _PostThumbnail(post: post, color: color, isDark: isDark);
+            return _PostThumbnail(
+                post: post, color: color, isDark: isDark);
           },
         );
       },
@@ -817,7 +1242,6 @@ class _PostThumbnail extends StatelessWidget {
           )
               : _placeholder(),
         ),
-        // Gradient overlay bottom
         Positioned(
           bottom: 0, left: 0, right: 0,
           child: Container(
@@ -826,21 +1250,26 @@ class _PostThumbnail extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                colors: [
+                  Colors.black.withOpacity(0.5),
+                  Colors.transparent
+                ],
               ),
             ),
           ),
         ),
-        // Like count
         Positioned(
           bottom: 5, left: 6,
           child: Row(children: [
-            const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
+            const Icon(Icons.favorite_rounded,
+                color: Colors.white, size: 11),
             const SizedBox(width: 3),
             Text(
               '${post.likeCount}',
               style: const TextStyle(
-                  color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
             ),
           ]),
         ),
@@ -851,13 +1280,14 @@ class _PostThumbnail extends StatelessWidget {
   Widget _placeholder() {
     return Container(
       color: color.withOpacity(0.1),
-      child: Icon(Icons.article_rounded, color: color.withOpacity(0.3), size: 28),
+      child: Icon(Icons.article_rounded,
+          color: color.withOpacity(0.3), size: 28),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════
-// TAGGED GRID — hiển thị bài accepted
+// TAGGED GRID
 // ══════════════════════════════════════════════════════════
 class _TaggedGrid extends StatelessWidget {
   final String uid;
@@ -886,14 +1316,15 @@ class _TaggedGrid extends StatelessWidget {
           return _EmptyGrid(
             icon: Icons.person_pin_rounded,
             title: 'Chưa có bài nào',
-            subtitle: 'Bài viết bạn được gắn thẻ và chấp nhận sẽ xuất hiện ở đây',
+            subtitle:
+            'Bài viết bạn được gắn thẻ và chấp nhận sẽ xuất hiện ở đây',
             isDark: isDark,
             color: color,
           );
         }
 
-        // Fetch post data for each tag
-        final postIds = tagDocs.map((d) => d['postId'] as String).toList();
+        final postIds =
+        tagDocs.map((d) => d['postId'] as String).toList();
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -923,16 +1354,15 @@ class _TaggedGrid extends StatelessWidget {
               itemCount: posts.length,
               itemBuilder: (_, i) {
                 final post = PostModel.fromFirestore(
-                    posts[i].data() as Map<String, dynamic>, posts[i].id);
+                    posts[i].data() as Map<String, dynamic>,
+                    posts[i].id);
                 return Stack(fit: StackFit.expand, children: [
-                  _PostThumbnail(post: post, color: color, isDark: isDark),
-                  // Tag indicator
+                  _PostThumbnail(
+                      post: post, color: color, isDark: isDark),
                   Positioned(
-                    top: 5,
-                    right: 5,
+                    top: 5, right: 5,
                     child: Container(
-                      width: 20,
-                      height: 20,
+                      width: 20, height: 20,
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5),
                         shape: BoxShape.circle,
@@ -962,7 +1392,10 @@ class _StatCol extends StatelessWidget {
   final IconData? icon;
 
   const _StatCol(
-      {required this.value, required this.label, required this.isDark, this.icon});
+      {required this.value,
+        required this.label,
+        required this.isDark,
+        this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -981,7 +1414,8 @@ class _StatCol extends StatelessWidget {
       const SizedBox(height: 2),
       Text(label,
           style: TextStyle(
-              color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+              color: isDark ? Colors.white38 : Colors.grey,
+              fontSize: 11)),
     ]);
   }
 }
@@ -993,7 +1427,10 @@ class _OutlineBtn extends StatelessWidget {
   final Color? color;
 
   const _OutlineBtn(
-      {required this.label, required this.isDark, required this.onTap, this.color});
+      {required this.label,
+        required this.isDark,
+        required this.onTap,
+        this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1023,7 +1460,9 @@ class _OutlineBtn extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: c ??
-                      (isDark ? Colors.white : AppTheme.lightTextPrimary),
+                      (isDark
+                          ? Colors.white
+                          : AppTheme.lightTextPrimary),
                   fontSize: 12,
                   fontWeight: FontWeight.w600)),
         ),
@@ -1038,15 +1477,16 @@ class _SquareBtn extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SquareBtn(
-      {required this.icon, required this.isDark, required this.onTap});
+      {required this.icon,
+        required this.isDark,
+        required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
+        width: 32, height: 32,
         decoration: BoxDecoration(
           color: isDark
               ? Colors.white.withOpacity(0.07)
@@ -1059,7 +1499,9 @@ class _SquareBtn extends StatelessWidget {
         ),
         child: Icon(icon,
             size: 16,
-            color: isDark ? Colors.white70 : AppTheme.lightTextPrimary),
+            color: isDark
+                ? Colors.white70
+                : AppTheme.lightTextPrimary),
       ),
     );
   }
@@ -1073,8 +1515,11 @@ class _EmptyGrid extends StatelessWidget {
   final Color color;
 
   const _EmptyGrid(
-      {required this.icon, required this.title, required this.subtitle,
-        required this.isDark, required this.color});
+      {required this.icon,
+        required this.title,
+        required this.subtitle,
+        required this.isDark,
+        required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1083,16 +1528,18 @@ class _EmptyGrid extends StatelessWidget {
         padding: const EdgeInsets.all(40),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 72, height: 72,
             decoration: BoxDecoration(
-                color: color.withOpacity(0.08), shape: BoxShape.circle),
+                color: color.withOpacity(0.08),
+                shape: BoxShape.circle),
             child: Icon(icon, color: color.withOpacity(0.35), size: 34),
           ),
           const SizedBox(height: 16),
           Text(title,
               style: TextStyle(
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  color: isDark
+                      ? Colors.white
+                      : AppTheme.lightTextPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
@@ -1140,19 +1587,27 @@ class _FieldRow extends StatelessWidget {
   final String? hint;
 
   const _FieldRow(
-      {required this.isDark, required this.color, required this.label,
-        required this.controller, this.keyboardType, this.maxLines = 1, this.hint});
+      {required this.isDark,
+        required this.color,
+        required this.label,
+        required this.controller,
+        this.keyboardType,
+        this.maxLines = 1,
+        this.hint});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      child:
+      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         SizedBox(
           width: 100,
           child: Text(label,
               style: TextStyle(
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  color: isDark
+                      ? Colors.white
+                      : AppTheme.lightTextPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500)),
         ),
@@ -1162,7 +1617,9 @@ class _FieldRow extends StatelessWidget {
             keyboardType: keyboardType,
             maxLines: maxLines,
             style: TextStyle(
-                color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                color: isDark
+                    ? Colors.white70
+                    : AppTheme.lightTextSecondary,
                 fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,
@@ -1171,8 +1628,8 @@ class _FieldRow extends StatelessWidget {
                   fontSize: 13),
               border: InputBorder.none,
               filled: false,
-              contentPadding:
-              const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+              contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12, horizontal: 0),
             ),
           ),
         ),
@@ -1188,18 +1645,24 @@ class _ReadRow extends StatelessWidget {
   final String? note;
 
   const _ReadRow(
-      {required this.isDark, required this.label, required this.value, this.note});
+      {required this.isDark,
+        required this.label,
+        required this.value,
+        this.note});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
         SizedBox(
           width: 100,
           child: Text(label,
               style: TextStyle(
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  color: isDark
+                      ? Colors.white
+                      : AppTheme.lightTextPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500)),
         ),
@@ -1211,7 +1674,8 @@ class _ReadRow extends StatelessWidget {
         ),
         if (note != null)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withOpacity(0.06)
@@ -1220,7 +1684,8 @@ class _ReadRow extends StatelessWidget {
             ),
             child: Text(note!,
                 style: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.grey, fontSize: 10)),
+                    color: isDark ? Colors.white38 : Colors.grey,
+                    fontSize: 10)),
           ),
       ]),
     );
@@ -1246,10 +1711,12 @@ class _TabHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
   final Color bgColor;
 
-  const _TabHeaderDelegate({required this.child, required this.bgColor});
+  const _TabHeaderDelegate(
+      {required this.child, required this.bgColor});
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool _) =>
+  Widget build(
+      BuildContext context, double shrinkOffset, bool _) =>
       Container(color: bgColor, child: child);
 
   @override
@@ -1257,5 +1724,10 @@ class _TabHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get minExtent => 44;
   @override
-  bool shouldRebuild(_TabHeaderDelegate old) => old.bgColor != bgColor;
+  bool shouldRebuild(_TabHeaderDelegate old) =>
+      old.bgColor != bgColor;
 }
+
+// ── PendingTagBadge (re-export từ tag_requests_screen) ────────
+// Dùng lại từ tag_requests_screen.dart — không cần khai báo lại
+// nếu đã import tag_requests_screen.dart ở trên

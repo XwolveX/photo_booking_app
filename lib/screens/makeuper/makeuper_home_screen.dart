@@ -10,6 +10,7 @@ import '../../models/post_model.dart';
 import '../auth/login_screen.dart';
 import '../shared/create_post_screen.dart';
 import '../shared/manage_services_screen.dart';
+import '../shared/wallet_screen.dart';
 
 class MakeuperHomeScreen extends StatefulWidget {
   const MakeuperHomeScreen({super.key});
@@ -40,9 +41,9 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(isDark, user?.fullName ?? ''),
+          _buildAppBar(isDark, user?.fullName ?? '', user?.uid ?? ''),
           SliverToBoxAdapter(child: _buildStatsRow(isDark, user?.uid ?? '')),
-          SliverToBoxAdapter(child: _buildIncomeCard(isDark)),
+          SliverToBoxAdapter(child: _buildIncomeCard(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('📋 Booking chờ xác nhận', isDark)),
           SliverToBoxAdapter(child: _buildBookingList(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('💄 Dịch vụ của tôi', isDark)),
@@ -57,14 +58,14 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  // ── AppBar ─────────────────────────────────────────────────
-  Widget _buildAppBar(bool isDark, String name) {
+  Widget _buildAppBar(bool isDark, String name, String uid) {
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
       actions: [
+        _WalletButton(uid: uid, isDark: isDark, roleColor: _roleColor),
         IconButton(
           icon: Icon(
               context.watch<ThemeProvider>().isDarkMode
@@ -107,31 +108,40 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: _roleColor, width: 2),
               ),
-              child: const Icon(Icons.brush_rounded, color: _roleColor, size: 24),
+              child:
+              const Icon(Icons.brush_rounded, color: _roleColor, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Studio makeup 💄',
-                    style: TextStyle(
-                        color: isDark ? Colors.white54 : AppTheme.lightTextSecondary,
-                        fontSize: 12)),
-                Text(name,
-                    style: TextStyle(
-                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                        fontSize: 17, fontWeight: FontWeight.w700)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Studio makeup 💄',
+                        style: TextStyle(
+                            color: isDark
+                                ? Colors.white54
+                                : AppTheme.lightTextSecondary,
+                            fontSize: 12)),
+                    Text(name,
+                        style: TextStyle(
+                            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700)),
+                  ]),
             ),
             GestureDetector(
               onTap: () => setState(() => _isOnline = !_isOnline),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: (_isOnline ? AppTheme.success : Colors.grey).withOpacity(0.15),
+                  color: (_isOnline ? AppTheme.success : Colors.grey)
+                      .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: _isOnline ? AppTheme.success : Colors.grey, width: 1.5),
+                      color: _isOnline ? AppTheme.success : Colors.grey,
+                      width: 1.5),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(
@@ -144,7 +154,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                   Text(_isOnline ? 'Online' : 'Offline',
                       style: TextStyle(
                           color: _isOnline ? AppTheme.success : Colors.grey,
-                          fontSize: 12, fontWeight: FontWeight.w600)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
                 ]),
               ),
             ),
@@ -153,13 +164,14 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
           Text('Quản lý booking &\nbài viết của bạn',
               style: TextStyle(
                   color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                  fontSize: 20, fontWeight: FontWeight.w800, height: 1.3)),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  height: 1.3)),
         ],
       ),
     );
   }
 
-  // ── Stats ──────────────────────────────────────────────────
   Widget _buildStatsRow(bool isDark, String uid) {
     if (uid.isEmpty) {
       return Padding(
@@ -218,7 +230,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                   .snapshots(),
               builder: (_, ps) {
                 final postCount = ps.data?.docs.length ?? 0;
-                return _statCard('$postCount', 'Bài\nviết', Icons.article_rounded, Colors.blue, isDark);
+                return _statCard('$postCount', 'Bài\nviết',
+                    Icons.article_rounded, Colors.blue, isDark);
               },
             ),
           ]),
@@ -227,7 +240,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  Widget _statCard(String v, String label, IconData icon, Color color, bool isDark) {
+  Widget _statCard(
+      String v, String label, IconData icon, Color color, bool isDark) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -235,97 +249,191 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
           color: isDark ? AppTheme.inputFill : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withOpacity(0.2)),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+                color: color.withOpacity(0.08),
+                blurRadius: 6,
+                offset: const Offset(0, 2))
+          ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 6),
-          Text(v, style: TextStyle(
-              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-              fontSize: 20, fontWeight: FontWeight.w800)),
-          Text(label, style: TextStyle(
-              color: isDark ? Colors.white38 : Colors.grey,
-              fontSize: 10, height: 1.3)),
+          Text(v,
+              style: TextStyle(
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800)),
+          Text(label,
+              style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey,
+                  fontSize: 10,
+                  height: 1.3)),
         ]),
       ),
     );
   }
 
-  // ── Income Card ────────────────────────────────────────────
-  Widget _buildIncomeCard(bool isDark) {
+  Widget _buildIncomeCard(bool isDark, String uid) {
     final tabs = ['Tuần', 'Tháng', 'Năm'];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_roleColor, _roleColor.withOpacity(0.7)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: _roleColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Text('💰 Thống kê thu nhập',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-            const Spacer(),
-            Container(
-              decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (i) {
-                  final sel = _incomeTab == i;
-                  return GestureDetector(
-                    onTap: () => setState(() => _incomeTab = i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                          color: sel ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(tabs[i],
-                          style: TextStyle(
-                              color: sel ? _roleColor : Colors.white.withOpacity(0.8),
-                              fontSize: 11,
-                              fontWeight: sel ? FontWeight.w700 : FontWeight.w400)),
-                    ),
-                  );
-                }),
-              ),
+      child: StreamBuilder<DocumentSnapshot>(
+        stream: uid.isEmpty
+            ? null
+            : FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .snapshots(),
+        builder: (context, snap) {
+          final userData = snap.data?.data() as Map<String, dynamic>?;
+          final balance = (userData?['balance'] as num?)?.toDouble() ?? 0.0;
+          final totalEarnings =
+              (userData?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+
+          return GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WalletScreen()),
             ),
-          ]),
-          const SizedBox(height: 16),
-          const Text('0 đ',
-              style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(
-            _incomeTab == 0 ? 'Tuần này' : _incomeTab == 1 ? 'Tháng này' : 'Năm nay',
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          Row(crossAxisAlignment: CrossAxisAlignment.end,
-            children: List.generate(7, (i) => Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                height: (20 + (i * 5) % 40).toDouble(),
-                decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(i == 5 ? 1 : 0.3),
-                    borderRadius: BorderRadius.circular(4)),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_roleColor, _roleColor.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: _roleColor.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6))
+                ],
               ),
-            )),
-          ),
-          const SizedBox(height: 8),
-          Text('Sẽ cập nhật khi có booking hoàn thành',
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
-        ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.account_balance_wallet_rounded,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      const Text('💰 Ví của tôi',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                      const Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(3, (i) {
+                            final sel = _incomeTab == i;
+                            return GestureDetector(
+                              onTap: () => setState(() => _incomeTab = i),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                    color: sel ? Colors.white : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20)),
+                                child: Text(tabs[i],
+                                    style: TextStyle(
+                                        color: sel
+                                            ? _roleColor
+                                            : Colors.white.withOpacity(0.8),
+                                        fontSize: 11,
+                                        fontWeight: sel
+                                            ? FontWeight.w700
+                                            : FontWeight.w400)),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 16),
+                    Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Số dư khả dụng',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.7), fontSize: 11)),
+                        const SizedBox(height: 4),
+                        Text('${_formatPrice(balance.toInt())}đ',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800)),
+                      ]),
+                      const Spacer(),
+                      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                        Text('Tổng thu nhập',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.7), fontSize: 11)),
+                        const SizedBox(height: 4),
+                        Text('${_formatPrice(totalEarnings.toInt())}đ',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700)),
+                      ]),
+                    ]),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(
+                          7,
+                              (i) => Expanded(
+                            child: Container(
+                              margin:
+                              const EdgeInsets.symmetric(horizontal: 2),
+                              height: (20 + (i * 5) % 40).toDouble(),
+                              decoration: BoxDecoration(
+                                  color: Colors.white
+                                      .withOpacity(i == 5 ? 1 : 0.3),
+                                  borderRadius: BorderRadius.circular(4)),
+                            ),
+                          )),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Text(
+                        balance > 0
+                            ? 'Nhấn để xem chi tiết ví →'
+                            : 'Tiền sẽ cộng khi user xác nhận hoàn thành',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.6), fontSize: 11),
+                      ),
+                      if (balance > 0) ...[
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text('Rút tiền',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ]),
+                  ]),
+            ),
+          );
+        },
       ),
     );
   }
 
-  // ── Booking List — REAL FIRESTORE ──────────────────────────
   Widget _buildBookingList(bool isDark, String uid) {
     if (uid.isEmpty) return const SizedBox.shrink();
 
@@ -371,16 +479,20 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                 color: isDark ? AppTheme.inputFill : Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.12)),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.grey.withOpacity(0.12)),
               ),
               child: Column(children: [
-                Icon(Icons.inbox_rounded, size: 40,
+                Icon(Icons.inbox_rounded,
+                    size: 40,
                     color: isDark ? Colors.white24 : Colors.grey[300]),
                 const SizedBox(height: 10),
                 Text('Chưa có booking nào',
                     style: TextStyle(
                         color: isDark ? Colors.white54 : Colors.grey,
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text('Booking mới sẽ hiển thị tại đây',
                     style: TextStyle(
@@ -401,7 +513,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  Widget _buildBookingCard(String bookingId, Map<String, dynamic> data, bool isDark) {
+  Widget _buildBookingCard(
+      String bookingId, Map<String, dynamic> data, bool isDark) {
     final bookingDate = (data['bookingDate'] as Timestamp?)?.toDate();
     final dateStr = bookingDate != null
         ? '${bookingDate.day}/${bookingDate.month}/${bookingDate.year}'
@@ -411,8 +524,6 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     final address = data['address'] as String? ?? '';
     final note = data['note'] as String?;
     final price = (data['makeuperPrice'] as num?)?.toDouble() ?? 0;
-
-    // Check xem có cả makeuper không
     final hasPhotographer = data['photographerId'] != null;
 
     return Container(
@@ -424,18 +535,20 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
         boxShadow: [
           BoxShadow(
               color: Colors.orange.withOpacity(0.08),
-              blurRadius: 12, offset: const Offset(0, 4))
+              blurRadius: 12,
+              offset: const Offset(0, 4))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(14)),
             ),
             child: Row(children: [
               const Icon(Icons.pending_rounded, color: Colors.orange, size: 16),
@@ -443,21 +556,21 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
               const Text('Chờ xác nhận',
                   style: TextStyle(
                       color: Colors.orange,
-                      fontWeight: FontWeight.w700, fontSize: 12)),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12)),
               const Spacer(),
               Text('$dateStr  •  $timeSlot',
                   style: TextStyle(
                       color: isDark ? Colors.white54 : Colors.grey,
-                      fontSize: 11, fontWeight: FontWeight.w600)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600)),
             ]),
           ),
-
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Khách hàng
                 Row(children: [
                   Container(
                     width: 36, height: 36,
@@ -469,65 +582,75 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(userName,
-                          style: TextStyle(
-                              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                      Text('Khách hàng',
-                          style: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.grey,
-                              fontSize: 11)),
-                    ]),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(userName,
+                              style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppTheme.lightTextPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14)),
+                          Text('Khách hàng',
+                              style: TextStyle(
+                                  color: isDark ? Colors.white38 : Colors.grey,
+                                  fontSize: 11)),
+                        ]),
                   ),
-                  // Giá
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                     Text(_formatPrice(price.toInt()),
                         style: const TextStyle(
                             color: _roleColor,
-                            fontWeight: FontWeight.w800, fontSize: 16)),
-                    const Text('đ', style: TextStyle(color: _roleColor, fontSize: 11)),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16)),
+                    const Text('đ',
+                        style: TextStyle(color: _roleColor, fontSize: 11)),
                   ]),
                 ]),
-
                 const SizedBox(height: 10),
-                Divider(color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.15)),
+                Divider(
+                    color: isDark
+                        ? Colors.white12
+                        : Colors.grey.withOpacity(0.15)),
                 const SizedBox(height: 8),
-
-                // Địa điểm
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.location_on_rounded, color: Colors.orange, size: 15),
+                  const Icon(Icons.location_on_rounded,
+                      color: Colors.orange, size: 15),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(address,
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             color: isDark ? Colors.white60 : Colors.grey[700],
-                            fontSize: 12, height: 1.4)),
+                            fontSize: 12,
+                            height: 1.4)),
                   ),
                 ]),
-
-                // Ghi chú
                 if (note != null && note.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 15),
+                    const Icon(Icons.edit_note_rounded,
+                        color: Colors.blue, size: 15),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(note,
-                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              color: isDark ? Colors.white54 : Colors.grey[600],
-                              fontSize: 12, height: 1.4)),
+                              color:
+                              isDark ? Colors.white54 : Colors.grey[600],
+                              fontSize: 12,
+                              height: 1.4)),
                     ),
                   ]),
                 ],
-
-                // Thông báo nếu có cả makeuper
                 if (hasPhotographer) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                         color: AppTheme.rolePhotographer.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8)),
@@ -535,17 +658,16 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                       const Icon(Icons.camera_alt_rounded,
                           color: AppTheme.rolePhotographer, size: 12),
                       const SizedBox(width: 5),
-                      Text('Có kèm Makeup Artist: ${data['makeuperName'] ?? ''}',
+                      Text(
+                          'Có kèm Photographer: ${data['photographerName'] ?? ''}',
                           style: const TextStyle(
                               color: AppTheme.rolePhotographer,
-                              fontSize: 11, fontWeight: FontWeight.w600)),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600)),
                     ]),
                   ),
                 ],
-
                 const SizedBox(height: 14),
-
-                // Nút Accept / Reject
                 Row(children: [
                   Expanded(
                     child: _ActionButton(
@@ -589,7 +711,6 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  // ── Accept / Reject Logic ──────────────────────────────────
   void _showConfirmDialog({
     required BuildContext context,
     required String bookingId,
@@ -611,7 +732,7 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
         ),
         content: Text(
           isAccept
-              ? 'Bạn sẽ xác nhận tham gia buổi chụp này.'
+              ? 'Bạn sẽ xác nhận tham gia buổi chụp này. User sẽ cần thanh toán để booking có hiệu lực.'
               : 'Bạn sẽ từ chối booking này. Khách hàng sẽ được thông báo.',
           style: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
         ),
@@ -619,7 +740,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Hủy',
-                style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
+                style: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -633,11 +755,14 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: isAccept ? AppTheme.success : AppTheme.error,
               minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: Text(isAccept ? 'Chấp nhận' : 'Từ chối',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -650,27 +775,21 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     required bool hasPartner,
   }) async {
     final isAccept = action == 'accept';
-    final docRef = FirebaseFirestore.instance.collection('bookings').doc(bookingId);
+    final docRef =
+    FirebaseFirestore.instance.collection('bookings').doc(bookingId);
 
     try {
       final updateData = <String, dynamic>{
         'makeuperStatus': isAccept ? 'confirmed' : 'rejected',
       };
 
-      // Nếu reject → set status tổng thành rejected
       if (!isAccept) {
         updateData['status'] = 'rejected';
       }
 
-      // Nếu accept → check xem makeuper đã confirm chưa
-      // Nếu không có makeuper → confirm luôn booking
       if (isAccept && !hasPartner) {
         updateData['status'] = 'confirmed';
       }
-
-
-      // Nếu accept + có makeuper → chỉ update makeuperStatus,
-      // chờ makeuper confirm thì booking mới thành confirmed
 
       await docRef.update(updateData);
 
@@ -678,11 +797,12 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isAccept
-                ? '✅ Đã chấp nhận booking!'
+                ? '✅ Đã chấp nhận! Chờ khách hàng thanh toán.'
                 : '❌ Đã từ chối booking'),
             backgroundColor: isAccept ? AppTheme.success : AppTheme.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -699,8 +819,6 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     }
   }
 
-
-  // ── Services Section (Firestore) ───────────────────────────
   Widget _buildServicesSection(bool isDark, String uid) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -711,7 +829,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
             .snapshots(),
         builder: (context, snap) {
           final services = (snap.data?.docs ?? [])
-              .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
+              .map((d) =>
+          {'id': d.id, ...(d.data() as Map<String, dynamic>)})
               .toList();
 
           return Column(children: [
@@ -725,45 +844,74 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                   border: Border.all(color: _roleColor.withOpacity(0.2)),
                 ),
                 child: Column(children: [
-                  Icon(Icons.design_services_rounded, size: 32, color: _roleColor.withOpacity(0.3)),
+                  Icon(Icons.design_services_rounded,
+                      size: 32, color: _roleColor.withOpacity(0.3)),
                   const SizedBox(height: 8),
                   Text('Chưa có dịch vụ nào',
-                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 13)),
+                      style: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.grey,
+                          fontSize: 13)),
                 ]),
               )
             else
               ...services.map((s) => Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: isDark ? AppTheme.inputFill : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _roleColor.withOpacity(0.15)),
+                  border:
+                  Border.all(color: _roleColor.withOpacity(0.15)),
                 ),
                 child: Row(children: [
-                  Container(width: 38, height: 38,
-                      decoration: BoxDecoration(color: _roleColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                      child: Icon(Icons.design_services_rounded, color: _roleColor, size: 18)),
+                  Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                          color: _roleColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.design_services_rounded,
+                          color: _roleColor, size: 18)),
                   const SizedBox(width: 10),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(s['name'] ?? '', style: TextStyle(
-                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                        fontWeight: FontWeight.w600, fontSize: 13)),
-                    if ((s['description'] ?? '').isNotEmpty)
-                      Text(s['description'], maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
-                  ])),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s['name'] ?? '',
+                                style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppTheme.lightTextPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13)),
+                            if ((s['description'] ?? '').isNotEmpty)
+                              Text(s['description'],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : Colors.grey,
+                                      fontSize: 11)),
+                          ])),
                   Text(
-                    (s['price'] as num? ?? 0) > 0 ? '${_formatPrice((s['price'] as num).toInt())}đ' : 'Liên hệ',
-                    style: TextStyle(color: _roleColor, fontWeight: FontWeight.w700, fontSize: 13),
+                    (s['price'] as num? ?? 0) > 0
+                        ? '${_formatPrice((s['price'] as num).toInt())}đ'
+                        : 'Liên hệ',
+                    style: TextStyle(
+                        color: _roleColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13),
                   ),
                 ]),
               )),
-
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ManageServicesScreen())),
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ManageServicesScreen())),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -772,12 +920,17 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: _roleColor.withOpacity(0.3)),
                 ),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.settings_rounded, color: _roleColor, size: 16),
-                  const SizedBox(width: 6),
-                  Text('Quản lý dịch vụ',
-                      style: TextStyle(color: _roleColor, fontWeight: FontWeight.w600, fontSize: 13)),
-                ]),
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.settings_rounded, color: _roleColor, size: 16),
+                      const SizedBox(width: 6),
+                      Text('Quản lý dịch vụ',
+                          style: TextStyle(
+                              color: _roleColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13)),
+                    ]),
               ),
             ),
           ]);
@@ -786,7 +939,6 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  // ── Week Calendar ──────────────────────────────────────────
   Widget _buildWeekCalendar(bool isDark) {
     final now = DateTime.now();
     final days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -804,19 +956,29 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
               decoration: BoxDecoration(
                 color: isToday
                     ? _roleColor
-                    : (isDark ? AppTheme.inputFill : Colors.grey.withOpacity(0.08)),
+                    : (isDark
+                    ? AppTheme.inputFill
+                    : Colors.grey.withOpacity(0.08)),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(children: [
                 Text(days[i],
                     style: TextStyle(
-                        color: isToday ? Colors.white : (isDark ? Colors.white54 : Colors.grey),
-                        fontSize: 10, fontWeight: FontWeight.w600)),
+                        color: isToday
+                            ? Colors.white
+                            : (isDark ? Colors.white54 : Colors.grey),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text('${d.day}',
                     style: TextStyle(
-                        color: isToday ? Colors.white : (isDark ? Colors.white : AppTheme.lightTextPrimary),
-                        fontSize: 13, fontWeight: FontWeight.w700)),
+                        color: isToday
+                            ? Colors.white
+                            : (isDark
+                            ? Colors.white
+                            : AppTheme.lightTextPrimary),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
               ]),
             ),
           );
@@ -825,7 +987,6 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
     );
   }
 
-  // ── My Posts ───────────────────────────────────────────────
   Widget _buildMyPosts(bool isDark, String uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -846,21 +1007,31 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
                 border: Border.all(color: _roleColor.withOpacity(0.2)),
               ),
               child: Column(children: [
-                Icon(Icons.edit_note_rounded, size: 40, color: _roleColor.withOpacity(0.4)),
+                Icon(Icons.edit_note_rounded,
+                    size: 40, color: _roleColor.withOpacity(0.4)),
                 const SizedBox(height: 10),
                 Text('Chưa có bài viết nào',
                     style: TextStyle(
                         color: isDark ? Colors.white54 : Colors.grey,
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const CreatePostScreen())),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const CreatePostScreen())),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(color: _roleColor, borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                        color: _roleColor,
+                        borderRadius: BorderRadius.circular(20)),
                     child: const Text('Viết bài đầu tiên',
-                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ),
               ]),
@@ -869,7 +1040,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
         }
         return Column(
           children: docs.map((doc) {
-            final post = PostModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
+            final post = PostModel.fromFirestore(
+                doc.data() as Map<String, dynamic>, doc.id);
             return _buildPostCard(post, isDark);
           }).toList(),
         );
@@ -892,28 +1064,37 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
             child: Text(post.title,
                 style: TextStyle(
                     color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                    fontWeight: FontWeight.w700, fontSize: 14)),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14)),
           ),
           Text(post.timeAgo,
-              style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+              style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey,
+                  fontSize: 11)),
         ]),
         const SizedBox(height: 6),
         Text(post.content,
-            maxLines: 2, overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
                 color: isDark ? Colors.white54 : Colors.grey[600],
-                fontSize: 12, height: 1.4)),
+                fontSize: 12,
+                height: 1.4)),
         const SizedBox(height: 8),
         Row(children: [
-          Icon(Icons.favorite_border_rounded, size: 14, color: isDark ? Colors.white38 : Colors.grey),
+          Icon(Icons.favorite_border_rounded,
+              size: 14, color: isDark ? Colors.white38 : Colors.grey),
           const SizedBox(width: 4),
           Text('${post.likeCount}',
-              style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+              style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
           const SizedBox(width: 12),
-          Icon(Icons.chat_bubble_outline_rounded, size: 14, color: isDark ? Colors.white38 : Colors.grey),
+          Icon(Icons.chat_bubble_outline_rounded,
+              size: 14, color: isDark ? Colors.white38 : Colors.grey),
           const SizedBox(width: 4),
           Text('${post.commentCount}',
-              style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+              style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
         ]),
       ]),
     );
@@ -925,7 +1106,8 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
       child: Text(title,
           style: TextStyle(
               color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-              fontSize: 16, fontWeight: FontWeight.w700)),
+              fontSize: 16,
+              fontWeight: FontWeight.w700)),
     );
   }
 
@@ -942,9 +1124,76 @@ class _MakeuperHomeScreenState extends State<MakeuperHomeScreen> {
   Future<void> _logout(BuildContext context) async {
     await context.read<AuthProvider>().logout();
     if (context.mounted) {
-      Navigator.pushAndRemoveUntil(context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (_) => false);
     }
+  }
+}
+
+// ── Wallet Button ──────────────────────────────────────────────
+class _WalletButton extends StatelessWidget {
+  final String uid;
+  final bool isDark;
+  final Color roleColor;
+
+  const _WalletButton(
+      {required this.uid, required this.isDark, required this.roleColor});
+
+  @override
+  Widget build(BuildContext context) {
+    if (uid.isEmpty) return const SizedBox.shrink();
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, snap) {
+        final data = snap.data?.data() as Map<String, dynamic>?;
+        final balance = (data?['balance'] as num?)?.toDouble() ?? 0.0;
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WalletScreen()),
+          ),
+          child: Container(
+            margin:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: roleColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: roleColor.withOpacity(0.3)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.account_balance_wallet_rounded,
+                  color: roleColor, size: 15),
+              const SizedBox(width: 5),
+              Text(
+                balance > 0 ? '${_fmt(balance.toInt())}đ' : 'Ví',
+                style: TextStyle(
+                    color: roleColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12),
+              ),
+            ]),
+          ),
+        );
+      },
+    );
+  }
+
+  String _fmt(int price) {
+    final s = price.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(s[i]);
+    }
+    return buffer.toString();
   }
 }
 
@@ -984,7 +1233,8 @@ class _ActionButton extends StatelessWidget {
           Text(label,
               style: TextStyle(
                   color: filled ? Colors.white : color,
-                  fontWeight: FontWeight.w700, fontSize: 13)),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13)),
         ]),
       ),
     );
