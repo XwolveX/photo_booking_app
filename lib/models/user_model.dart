@@ -14,6 +14,9 @@ class UserModel {
   final int? totalBookings;
   final DateTime createdAt;
 
+  // ── MỚI: trạng thái xác minh SĐT (1 lần duy nhất / tài khoản) ──
+  final bool phoneVerified;
+
   UserModel({
     required this.uid,
     required this.fullName,
@@ -25,6 +28,7 @@ class UserModel {
     this.rating,
     this.totalBookings,
     required this.createdAt,
+    this.phoneVerified = false, // default: chưa xác minh
   });
 
   factory UserModel.fromFirestore(Map<String, dynamic> data, String uid) {
@@ -34,7 +38,7 @@ class UserModel {
       email: data['email'] ?? '',
       phone: data['phone'] ?? '',
       role: UserRole.values.firstWhere(
-        (e) => e.name == data['role'],
+            (e) => e.name == data['role'],
         orElse: () => UserRole.user,
       ),
       avatarUrl: data['avatarUrl'],
@@ -42,6 +46,7 @@ class UserModel {
       rating: (data['rating'] as num?)?.toDouble(),
       totalBookings: data['totalBookings'],
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      phoneVerified: data['phoneVerified'] ?? false, // ← MỚI
     );
   }
 
@@ -56,7 +61,31 @@ class UserModel {
       'rating': rating ?? 0.0,
       'totalBookings': totalBookings ?? 0,
       'createdAt': createdAt,
+      'phoneVerified': phoneVerified, // ← MỚI
     };
+  }
+
+  // copyWith để cập nhật riêng lẻ
+  UserModel copyWith({
+    String? fullName,
+    String? phone,
+    String? avatarUrl,
+    String? bio,
+    bool? phoneVerified,
+  }) {
+    return UserModel(
+      uid: uid,
+      fullName: fullName ?? this.fullName,
+      email: email,
+      phone: phone ?? this.phone,
+      role: role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+      rating: rating,
+      totalBookings: totalBookings,
+      createdAt: createdAt,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+    );
   }
 
   String get roleDisplayName {

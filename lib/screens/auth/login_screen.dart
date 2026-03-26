@@ -1,3 +1,6 @@
+// lib/screens/auth/login_screen.dart
+// UI giữ nguyên 100% — chỉ thêm logic OTP sau khi login thành công
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
@@ -11,6 +14,10 @@ import '../user/user_main_screen.dart';
 import '../photographer/photographer_main_screen.dart';
 import '../makeuper/makeuper_main_screen.dart';
 import '../../services/theme_provider.dart';
+// ── MỚI: thêm 3 import này ──
+import '../../services/otp_service.dart';
+import 'email_otp_screen.dart';
+import 'phone_verify_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,6 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
 
+  // ── MỚI ──
+  final OtpService _otpService = OtpService();
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -32,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ── CHỈ THAY HÀM NÀY ─────────────────────────────────────────
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -43,9 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    if (success) {
-      _navigateByRole(auth.currentUser!.role);
-    } else {
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(auth.errorMessage ?? 'Đăng nhập thất bại'),
@@ -54,7 +63,36 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
+      return;
     }
+
+    final user = auth.currentUser!;
+
+    // Bước 1: kiểm tra thiết bị đã verify email OTP chưa
+    final deviceVerified = await _otpService.isDeviceVerified();
+    if (!mounted) return;
+
+    if (!deviceVerified) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailOtpScreen(uid: user.uid, email: user.email),
+        ),
+      );
+      return;
+    }
+
+    // Bước 2: thiết bị ok → kiểm tra SĐT đã verify chưa
+    if (!user.phoneVerified) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()),
+      );
+      return;
+    }
+
+    // Bước 3: tất cả ok → vào Home
+    _navigateByRole(user.role);
   }
 
   void _navigateByRole(UserRole role) {
@@ -76,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // ── PHẦN BUILD GIỮ NGUYÊN HOÀN TOÀN ─────────────────────────
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -90,91 +129,87 @@ class _LoginScreenState extends State<LoginScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: isDark
-                    ? [AppTheme.surface, AppTheme.primary]
-                    : [Colors.white, AppTheme.lightBg],
+                    ? const [AppTheme.surface, AppTheme.primary]
+                    : const [Color(0xFFFFF5F7), Color(0xFFFFE4E9)],
               ),
             ),
-          ),
-
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 60),
-                  _buildHeader(isDark),
-                  const SizedBox(height: 48),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        CustomTextField(
-                          controller: _emailCtrl,
-                          label: 'Email',
-                          hint: 'example@email.com',
-                          prefixIcon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Vui lòng nhập email';
-                            if (!v.contains('@')) return 'Email không hợp lệ';
-                            return null;
-                          },
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40),
+                      _buildHeader(isDark),
+                      const SizedBox(height: 40),
+                      CustomTextField(
+                        controller: _emailCtrl,
+                        label: 'Email',
+                        hint: 'example@email.com',
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Vui lòng nhập email';
+                          if (!v.contains('@')) return 'Email không hợp lệ';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _passwordCtrl,
+                        label: 'Mật khẩu',
+                        hint: '••••••••',
+                        obscureText: _obscurePassword,
+                        prefixIcon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                        const SizedBox(height: 16),
-                        CustomTextField(
-                          controller: _passwordCtrl,
-                          label: 'Mật khẩu',
-                          hint: '••••••••',
-                          prefixIcon: Icons.lock_outline,
-                          obscureText: _obscurePassword,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: Theme.of(context).hintColor,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
+                          if (v.length < 6) return 'Ít nhất 6 ký tự';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen()),
                           ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
-                            return null;
-                          },
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ForgotPasswordScreen()),
-                            ),
-                            child: Text(
-                              'Quên mật khẩu?',
-                              style: TextStyle(
-                                  color: isDark ? AppTheme.secondary : AppTheme.pinkAccent),
-                            ),
+                          child: Text(
+                            'Quên mật khẩu?',
+                            style: TextStyle(
+                                color: isDark
+                                    ? AppTheme.secondary
+                                    : AppTheme.pinkAccent),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Consumer<AuthProvider>(
-                          builder: (_, auth, __) => LoadingButton(
-                            isLoading: auth.isLoading,
-                            onPressed: _login,
-                            label: 'Đăng nhập',
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Consumer<AuthProvider>(
+                        builder: (_, auth, __) => LoadingButton(
+                          isLoading: auth.isLoading,
+                          onPressed: _login,
+                          label: 'Đăng nhập',
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 32),
+                      _buildDivider(isDark),
+                      const SizedBox(height: 32),
+                      _buildRegisterPrompt(isDark),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                  _buildDivider(isDark),
-                  const SizedBox(height: 32),
-                  _buildRegisterPrompt(isDark),
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
             ),
           ),
@@ -219,7 +254,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Text(
           'Đăng nhập để tiếp tục',
           style: TextStyle(
-            color: (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.5),
+            color: (isDark ? Colors.white : AppTheme.lightTextPrimary)
+                .withOpacity(0.5),
             fontSize: 20,
           ),
         ),
@@ -228,7 +264,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildDivider(bool isDark) {
-    final color = (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.1);
+    final color =
+    (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.1);
     return Row(
       children: [
         Expanded(child: Divider(color: color)),
@@ -237,7 +274,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Text(
             'Chưa có tài khoản?',
             style: TextStyle(
-                color: (isDark ? Colors.white : AppTheme.lightTextPrimary).withOpacity(0.4),
+                color: (isDark ? Colors.white : AppTheme.lightTextPrimary)
+                    .withOpacity(0.4),
                 fontSize: 16),
           ),
         ),

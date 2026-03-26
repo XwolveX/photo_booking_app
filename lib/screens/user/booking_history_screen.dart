@@ -22,8 +22,6 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  static const _roleColor = AppTheme.roleUser;
-
   static const _statusFilters = [
     _StatusFilter('Tất cả', null, Icons.list_rounded, Colors.blue),
     _StatusFilter('Chờ xác nhận', 'pending', Icons.pending_rounded, Colors.orange),

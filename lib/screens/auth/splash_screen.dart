@@ -1,8 +1,13 @@
+// lib/screens/auth/splash_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
+import '../../services/otp_service.dart';
 import '../../theme/app_theme.dart';
 import 'login_screen.dart';
+import 'email_otp_screen.dart';
+import 'phone_verify_screen.dart';
 import '../user/user_main_screen.dart';
 import '../photographer/photographer_main_screen.dart';
 import '../makeuper/makeuper_main_screen.dart';
@@ -44,10 +49,12 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _navigate(AuthProvider authProvider) {
+  // ── FIX: check OTP trước khi vào Home ────────────────────────
+  Future<void> _navigate(AuthProvider authProvider) async {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
 
+    // Chưa đăng nhập → Login
     if (!authProvider.isLoggedIn) {
       Navigator.pushReplacement(
         context,
@@ -56,7 +63,35 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final role = authProvider.currentUser!.role;
+    final user = authProvider.currentUser!;
+    final otpService = OtpService();
+
+    // Kiểm tra thiết bị đã verify email OTP chưa
+    final deviceVerified = await otpService.isDeviceVerified();
+    if (!mounted) return;
+
+    if (!deviceVerified) {
+      // Phải xác minh thiết bị qua email OTP
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailOtpScreen(uid: user.uid, email: user.email),
+        ),
+      );
+      return;
+    }
+
+    // Thiết bị ok → kiểm tra SĐT
+    if (!user.phoneVerified) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()),
+      );
+      return;
+    }
+
+    // Tất cả ok → vào Home theo role
+    final role = user.role;
     Widget home;
     switch (role) {
       case UserRole.photographer:
@@ -79,7 +114,6 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
-    // Khi Firebase đã restore xong session → navigate
     if (authProvider.isInitialized && !_hasNavigated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _navigate(authProvider);
@@ -99,40 +133,20 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
-                    'assets/icons/splash_icon.png',
-                    width: 160,
-                    height: 160,
-                    fit: BoxFit.contain,
+                    'assets/icons/smee_logo.png',
+                    width: 120,
+                    height: 120,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   const Text(
                     'SMEE',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.5,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Kết nối - Sáng tạo - Tỏa sáng',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 14,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  if (!authProvider.isInitialized)
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white.withOpacity(0.4),
-                      ),
-                    ),
                 ],
               ),
             ),

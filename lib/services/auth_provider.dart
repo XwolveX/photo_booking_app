@@ -4,20 +4,25 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import 'auth_service.dart';
+import 'otp_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final OtpService _otpService = OtpService();
 
   UserModel? _currentUser;
   bool _isLoading = false;
-  bool _isInitialized = false; // ← THÊM
+  bool _isInitialized = false;
   String? _errorMessage;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  bool get isInitialized => _isInitialized; // ← THÊM
+  bool get isInitialized => _isInitialized;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
+
+  // Tiện ích nhanh: SĐT đã xác minh chưa?
+  bool get isPhoneVerified => _currentUser?.phoneVerified ?? false;
 
   AuthProvider() {
     _authService.authStateChanges.listen(_onAuthStateChanged);
@@ -29,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _currentUser = await _authService.getUserData(firebaseUser.uid);
     }
-    _isInitialized = true; // ← THÊM: Firebase đã restore session xong
+    _isInitialized = true;
     notifyListeners();
   }
 
@@ -82,8 +87,9 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ─── ĐĂNG XUẤT ─────────────────────────────────────────────
+  // ─── ĐĂNG XUẤT (xóa device flag để lần sau phải OTP lại) ───
   Future<void> logout() async {
+    await _otpService.clearDeviceVerified(); // ← xóa flag thiết bị
     await _authService.logout();
     _currentUser = null;
     notifyListeners();
@@ -102,6 +108,14 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // ─── CẬP NHẬT phoneVerified LOCAL (sau khi verify xong) ────
+  void markPhoneVerified() {
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(phoneVerified: true);
+      notifyListeners();
     }
   }
 
