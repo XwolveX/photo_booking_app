@@ -133,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
-                    'assets/icons/smee_logo.png',
+                    'assets/icons/splash_icon.png',
                     width: 120,
                     height: 120,
                   ),

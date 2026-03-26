@@ -12,7 +12,8 @@ import '../shared/public_profile_screen.dart';
 import '../payment/payment_screen.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
-  const BookingHistoryScreen({super.key});
+  final bool showBackButton;
+  const BookingHistoryScreen({super.key,this.showBackButton = false});
 
   @override
   State<BookingHistoryScreen> createState() => _BookingHistoryScreenState();
@@ -97,6 +98,14 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
       automaticallyImplyLeading: false,
+      leading: widget.showBackButton
+          ? IconButton(
+        icon: Icon(Icons.arrow_back_ios_rounded,
+            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+            size: 20),
+        onPressed: () => Navigator.pop(context),
+      )
+          : null,
       title: Row(children: [
         Container(
           width: 32, height: 32,

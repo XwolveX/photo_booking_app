@@ -408,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ]),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
-                    builder: (_) => const BookingHistoryScreen())),
+                    builder: (_) => const BookingHistoryScreen(showBackButton: true))),
           ),
         PendingTagBadge(
           uid: user.uid,
@@ -743,7 +743,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             color: color,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(
-                    builder: (_) => const BookingHistoryScreen())),
+                    builder: (_) => const BookingHistoryScreen(showBackButton: true))),
           ),
         ),
       ],
