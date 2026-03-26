@@ -6,9 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_provider.dart';
 import '../../services/theme_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../models/post_model.dart';
-import '../auth/login_screen.dart';
-import '../shared/create_post_screen.dart';
 import '../shared/manage_services_screen.dart';
 import '../shared/wallet_screen.dart';
 
@@ -31,14 +28,6 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const CreatePostScreen())),
-        backgroundColor: _roleColor,
-        icon: const Icon(Icons.edit_rounded, color: Colors.white),
-        label: const Text('Viết bài',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-      ),
       body: CustomScrollView(
         slivers: [
           _buildAppBar(isDark, user?.fullName ?? '', user?.uid ?? ''),
@@ -48,10 +37,8 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
           SliverToBoxAdapter(child: _buildBookingList(isDark, user?.uid ?? '')),
           SliverToBoxAdapter(child: _buildSectionTitle('🛠️ Dịch vụ của tôi', isDark)),
           SliverToBoxAdapter(child: _buildServicesSection(isDark, user?.uid ?? '')),
-          SliverToBoxAdapter(child: _buildSectionTitle('📅 Lịch trong tuần', isDark)),
-          SliverToBoxAdapter(child: _buildWeekCalendar(isDark)),
-          SliverToBoxAdapter(child: _buildSectionTitle('📝 Bài viết của tôi', isDark)),
-          SliverToBoxAdapter(child: _buildMyPosts(isDark, user?.uid ?? '')),
+          SliverToBoxAdapter(child: _buildSectionTitle('📅 Lịch trình làm việc', isDark)),
+          SliverToBoxAdapter(child: _buildWorkSchedule(isDark, user?.uid ?? '')),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
@@ -75,11 +62,6 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
                   : Icons.light_mode,
               color: isDark ? Colors.amber : Colors.orange),
           onPressed: () => context.read<ThemeProvider>().toggleTheme(),
-        ),
-        IconButton(
-          icon: Icon(Icons.logout,
-              color: isDark ? Colors.white : AppTheme.lightTextPrimary),
-          onPressed: () => _logout(context),
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(background: _buildHeader(isDark, name)),
@@ -862,162 +844,14 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
     );
   }
 
-  // ── Week Calendar ──────────────────────────────────────────
-  Widget _buildWeekCalendar(bool isDark) {
-    final now = DateTime.now();
-    final days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    final today = now.weekday - 1;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: List.generate(7, (i) {
-          final isToday = i == today;
-          final d = now.subtract(Duration(days: today - i));
-          return Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: isToday
-                    ? _roleColor
-                    : (isDark
-                    ? AppTheme.inputFill
-                    : Colors.grey.withOpacity(0.08)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(children: [
-                Text(days[i],
-                    style: TextStyle(
-                        color: isToday
-                            ? Colors.white
-                            : (isDark ? Colors.white54 : Colors.grey),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text('${d.day}',
-                    style: TextStyle(
-                        color: isToday
-                            ? Colors.white
-                            : (isDark ? Colors.white : AppTheme.lightTextPrimary),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
-              ]),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  // ── My Posts ───────────────────────────────────────────────
-  Widget _buildMyPosts(bool isDark, String uid) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('posts')
-          .where('authorId', isEqualTo: uid)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snap) {
-        final docs = snap.data?.docs ?? [];
-        if (docs.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.inputFill : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _roleColor.withOpacity(0.2)),
-              ),
-              child: Column(children: [
-                Icon(Icons.edit_note_rounded,
-                    size: 40, color: _roleColor.withOpacity(0.4)),
-                const SizedBox(height: 10),
-                Text('Chưa có bài viết nào',
-                    style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.grey,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(
-                          builder: (_) => const CreatePostScreen())),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                        color: _roleColor,
-                        borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Viết bài đầu tiên',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ]),
-            ),
-          );
-        }
-        return Column(
-          children: docs.map((doc) {
-            final post = PostModel.fromFirestore(
-                doc.data() as Map<String, dynamic>, doc.id);
-            return _buildPostCard(post, isDark);
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildPostCard(PostModel post, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.inputFill : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _roleColor.withOpacity(0.15)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Text(post.title,
-                style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14)),
-          ),
-          Text(post.timeAgo,
-              style: TextStyle(
-                  color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
-        ]),
-        const SizedBox(height: 6),
-        Text(post.content,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                color: isDark ? Colors.white54 : Colors.grey[600],
-                fontSize: 12,
-                height: 1.4)),
-        const SizedBox(height: 8),
-        Row(children: [
-          Icon(Icons.favorite_border_rounded,
-              size: 14, color: isDark ? Colors.white38 : Colors.grey),
-          const SizedBox(width: 4),
-          Text('${post.likeCount}',
-              style: TextStyle(
-                  color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
-          const SizedBox(width: 12),
-          Icon(Icons.chat_bubble_outline_rounded,
-              size: 14, color: isDark ? Colors.white38 : Colors.grey),
-          const SizedBox(width: 4),
-          Text('${post.commentCount}',
-              style: TextStyle(
-                  color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
-        ]),
-      ]),
+  // ── Work Schedule ──────────────────────────────────────────
+  Widget _buildWorkSchedule(bool isDark, String uid) {
+    if (uid.isEmpty) return const SizedBox.shrink();
+    return _WorkScheduleWidget(
+      uid: uid,
+      isDark: isDark,
+      roleColor: _roleColor,
+      roleField: 'photographerId',
     );
   }
 
@@ -1042,15 +876,6 @@ class _PhotographerHomeScreenState extends State<PhotographerHomeScreen> {
     return buffer.toString();
   }
 
-  Future<void> _logout(BuildContext context) async {
-    await context.read<AuthProvider>().logout();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (_) => false);
-    }
-  }
 }
 
 // ── Wallet Button with live balance ───────────────────────────
@@ -1157,5 +982,615 @@ class _ActionButton extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+// ── Work Schedule Widget (shared, reusable) ───────────────────
+class _WorkScheduleWidget extends StatefulWidget {
+  final String uid;
+  final bool isDark;
+  final Color roleColor;
+  final String roleField; // 'photographerId' or 'makeuperId'
+
+  const _WorkScheduleWidget({
+    required this.uid,
+    required this.isDark,
+    required this.roleColor,
+    required this.roleField,
+  });
+
+  @override
+  State<_WorkScheduleWidget> createState() => _WorkScheduleWidgetState();
+}
+
+class _WorkScheduleWidgetState extends State<_WorkScheduleWidget> {
+  DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _selectedDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+  static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('bookings')
+          .where(widget.roleField, isEqualTo: widget.uid)
+          .where('status', whereIn: ['pending', 'confirmed', 'completed'])
+          .snapshots(),
+      builder: (context, snap) {
+        // Build a map: "yyyy-MM-dd" → list of bookings
+        final bookingMap = <String, List<Map<String, dynamic>>>{};
+        for (final doc in snap.data?.docs ?? []) {
+          final data = doc.data() as Map<String, dynamic>;
+          final date = (data['bookingDate'] as Timestamp?)?.toDate();
+          if (date == null) continue;
+          final key = _dateKey(date);
+          bookingMap.putIfAbsent(key, () => []).add({...data, 'id': doc.id});
+        }
+
+        final selectedKey = _dateKey(_selectedDay);
+        final selectedBookings = bookingMap[selectedKey] ?? [];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(children: [
+            // ── Calendar card ──────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: widget.isDark ? AppTheme.inputFill : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.isDark ? Colors.black26 : Colors.grey.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(children: [
+                // Month nav
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+                  child: Row(children: [
+                    Text(
+                      _monthLabel(_focusedMonth),
+                      style: TextStyle(
+                        color: widget.isDark ? Colors.white : AppTheme.lightTextPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Tóm tắt tháng
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('bookings')
+                          .where(widget.roleField, isEqualTo: widget.uid)
+                          .where('status', whereIn: ['confirmed', 'completed'])
+                          .snapshots(),
+                      builder: (context, mSnap) {
+                        final monthCount = (mSnap.data?.docs ?? []).where((d) {
+                          final data = d.data() as Map<String, dynamic>;
+                          final date = (data['bookingDate'] as Timestamp?)?.toDate();
+                          return date != null &&
+                              date.month == _focusedMonth.month &&
+                              date.year == _focusedMonth.year;
+                        }).length;
+                        if (monthCount == 0) return const SizedBox.shrink();
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: widget.roleColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$monthCount lịch',
+                            style: TextStyle(
+                              color: widget.roleColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.chevron_left_rounded,
+                          color: widget.isDark ? Colors.white54 : Colors.grey),
+                      onPressed: () => setState(() {
+                        _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+                      }),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.chevron_right_rounded,
+                          color: widget.isDark ? Colors.white54 : Colors.grey),
+                      onPressed: () => setState(() {
+                        _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+                      }),
+                    ),
+                  ]),
+                ),
+
+                // Day-of-week header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: _days.map((d) => Expanded(
+                      child: Center(
+                        child: Text(d,
+                          style: TextStyle(
+                            color: d == 'CN'
+                                ? widget.roleColor
+                                : (widget.isDark ? Colors.white38 : Colors.grey),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Calendar grid
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
+                  child: _buildGrid(bookingMap),
+                ),
+              ]),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Selected day schedule ──────────────────────
+            _buildDaySchedule(selectedBookings),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _buildGrid(Map<String, List<Map<String, dynamic>>> bookingMap) {
+    final firstOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
+    final startOffset = (firstOfMonth.weekday - 1) % 7;
+    final totalCells = startOffset + daysInMonth;
+    final rows = (totalCells / 7).ceil();
+    final today = DateTime.now();
+
+    return Column(
+      children: List.generate(rows, (row) {
+        return Row(
+          children: List.generate(7, (col) {
+            final cellIndex = row * 7 + col;
+            final day = cellIndex - startOffset + 1;
+            if (day < 1 || day > daysInMonth) {
+              return const Expanded(child: SizedBox(height: 44));
+            }
+
+            final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
+            final key = _dateKey(date);
+            final bookings = bookingMap[key] ?? [];
+            final hasBooking = bookings.isNotEmpty;
+            final confirmedCount = bookings.where((b) => b['status'] == 'confirmed').length;
+            final pendingCount = bookings.where((b) => b['status'] == 'pending').length;
+
+            final isToday = date.year == today.year &&
+                date.month == today.month &&
+                date.day == today.day;
+            final isSelected = date.year == _selectedDay.year &&
+                date.month == _selectedDay.month &&
+                date.day == _selectedDay.day;
+            final isSunday = date.weekday == 7;
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedDay = date),
+                child: Container(
+                  height: 46,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? widget.roleColor
+                        : isToday
+                        ? widget.roleColor.withOpacity(0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: isToday && !isSelected
+                        ? Border.all(color: widget.roleColor.withOpacity(0.5), width: 1.5)
+                        : null,
+                  ),
+                  child: Stack(alignment: Alignment.center, children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$day',
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : isSunday
+                                ? widget.roleColor.withOpacity(0.8)
+                                : (widget.isDark ? Colors.white : AppTheme.lightTextPrimary),
+                            fontWeight: isSelected || isToday ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (hasBooking) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (confirmedCount > 0)
+                                Container(
+                                  width: 5, height: 5,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.white : AppTheme.success,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              if (pendingCount > 0)
+                                Container(
+                                  width: 5, height: 5,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.white70 : Colors.orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                    // Badge tổng số booking nếu > 1
+                    if (hasBooking && bookings.length > 1)
+                      Positioned(
+                        top: 3,
+                        right: 3,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.3)
+                                : widget.roleColor.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${bookings.length}',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : widget.roleColor,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ),
+            );
+          }),
+        );
+      }),
+    );
+  }
+
+  Widget _buildDaySchedule(List<Map<String, dynamic>> bookings) {
+    final dateStr = '${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}';
+    final weekdays = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    final weekdayStr = weekdays[_selectedDay.weekday - 1];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.isDark ? AppTheme.inputFill : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: bookings.isNotEmpty
+              ? widget.roleColor.withOpacity(0.3)
+              : (widget.isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.12)),
+          width: bookings.isNotEmpty ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: widget.isDark ? Colors.black12 : Colors.grey.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header ngày
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: bookings.isNotEmpty
+                ? widget.roleColor.withOpacity(0.07)
+                : Colors.transparent,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+          ),
+          child: Row(children: [
+            Icon(
+              bookings.isNotEmpty ? Icons.event_available_rounded : Icons.event_outlined,
+              color: bookings.isNotEmpty ? widget.roleColor : (widget.isDark ? Colors.white38 : Colors.grey),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                weekdayStr,
+                style: TextStyle(
+                  color: widget.isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                dateStr,
+                style: TextStyle(
+                  color: widget.roleColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ]),
+            const Spacer(),
+            if (bookings.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: widget.roleColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${bookings.length} lịch',
+                  style: TextStyle(
+                    color: widget.roleColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ]),
+        ),
+
+        if (bookings.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(children: [
+              Icon(Icons.free_breakfast_rounded,
+                  color: widget.isDark ? Colors.white24 : Colors.grey[300], size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Không có lịch làm việc',
+                style: TextStyle(
+                  color: widget.isDark ? Colors.white38 : Colors.grey,
+                  fontSize: 13,
+                ),
+              ),
+            ]),
+          )
+        else
+        // Sort by timeSlot
+          ...(() {
+            final sorted = List<Map<String, dynamic>>.from(bookings);
+            sorted.sort((a, b) => (a['timeSlot'] ?? '').compareTo(b['timeSlot'] ?? ''));
+            return sorted;
+          })().asMap().entries.map((entry) {
+            final i = entry.key;
+            final b = entry.value;
+            return _buildScheduleItem(b, i, bookings.length);
+          }),
+      ]),
+    );
+  }
+
+  Widget _buildScheduleItem(Map<String, dynamic> data, int index, int total) {
+    final timeSlot = data['timeSlot'] as String? ?? '--:--';
+    final userName = data['userName'] as String? ?? 'Khách hàng';
+    final address = data['address'] as String? ?? '';
+    final note = data['note'] as String?;
+    final status = data['status'] as String? ?? 'pending';
+    final paymentStatus = data['paymentStatus'] as String?;
+
+    Color statusColor;
+    IconData statusIcon;
+    String statusLabel;
+    switch (status) {
+      case 'confirmed':
+        statusColor = paymentStatus == 'paid' ? AppTheme.success : Colors.orange;
+        statusIcon = paymentStatus == 'paid'
+            ? Icons.check_circle_rounded
+            : Icons.payments_outlined;
+        statusLabel = paymentStatus == 'paid' ? 'Đã thanh toán' : 'Chờ thanh toán';
+        break;
+      case 'completed':
+        statusColor = Colors.blue;
+        statusIcon = Icons.done_all_rounded;
+        statusLabel = 'Hoàn thành';
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending_rounded;
+        statusLabel = 'Chờ xác nhận';
+    }
+
+    return Column(children: [
+      if (index > 0)
+        Divider(
+          height: 1,
+          indent: 16,
+          color: widget.isDark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.grey.withOpacity(0.1),
+        ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Cột giờ
+          Column(children: [
+            Container(
+              width: 52,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  timeSlot,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            if (index < total - 1) ...[
+              const SizedBox(height: 4),
+              Container(
+                width: 1.5,
+                height: 20,
+                color: widget.isDark ? Colors.white12 : Colors.grey.withOpacity(0.2),
+              ),
+            ],
+          ]),
+          const SizedBox(width: 12),
+
+          // Nội dung
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    userName,
+                    style: TextStyle(
+                      color: widget.isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(statusIcon, color: statusColor, size: 10),
+                    const SizedBox(width: 3),
+                    Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 5),
+
+              if (address.isNotEmpty)
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.location_on_outlined,
+                      size: 13, color: widget.isDark ? Colors.white38 : Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      address,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: widget.isDark ? Colors.white54 : Colors.grey[600],
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ]),
+
+              if (note != null && note.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.notes_rounded,
+                      size: 13, color: Colors.blue.withOpacity(0.7)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      note,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: widget.isDark ? Colors.white38 : Colors.grey[500],
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
+
+              // Giá
+              const SizedBox(height: 5),
+              Row(children: [
+                Icon(Icons.monetization_on_outlined,
+                    size: 13, color: widget.roleColor.withOpacity(0.7)),
+                const SizedBox(width: 4),
+                Text(
+                      () {
+                    final price = widget.roleField == 'photographerId'
+                        ? (data['photographerPrice'] as num?)?.toInt() ?? 0
+                        : (data['makeuperPrice'] as num?)?.toInt() ?? 0;
+                    return price > 0 ? '${_fmtPrice(price)}đ' : 'Chưa có giá';
+                  }(),
+                  style: TextStyle(
+                    color: widget.roleColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ]),
+            ],
+          )),
+        ]),
+      ),
+    ]);
+  }
+
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String _monthLabel(DateTime d) {
+    const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+      'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+    return '${months[d.month - 1]} ${d.year}';
+  }
+
+  String _fmtPrice(int price) {
+    final s = price.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
   }
 }

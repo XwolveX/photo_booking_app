@@ -7,7 +7,6 @@ import '../../services/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/theme_provider.dart';
 import '../../theme/app_theme.dart';
-import '../auth/login_screen.dart';
 import '../chat/chat_screen.dart';
 import '../shared/public_profile_screen.dart';
 import '../payment/payment_screen.dart';
@@ -48,46 +47,69 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final uid = context.read<AuthProvider>().currentUser?.uid ?? '';
+    final currentUser = context.read<AuthProvider>().currentUser;
+    final uid = currentUser?.uid ?? '';
+    final role = currentUser?.role.name ?? 'user';
+    final color = _colorForRole(role);
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
-      body: NestedScrollView(
-        headerSliverBuilder: (_, __) => [
-          _buildAppBar(isDark),
-          _buildTabBar(isDark),
+      appBar: _buildAppBar(isDark, role),
+      body: Column(
+        children: [
+          _buildTabBar(isDark, role, color),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _statusFilters.map((filter) {
+                return _BookingList(
+                  uid: uid,
+                  role: role,
+                  statusFilter: filter.status,
+                  filterColor: filter.color,
+                  isDark: isDark,
+                );
+              }).toList(),
+            ),
+          ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: _statusFilters.map((filter) {
-            return _BookingList(
-              uid: uid,
-              statusFilter: filter.status,
-              filterColor: filter.color,
-              isDark: isDark,
-            );
-          }).toList(),
-        ),
       ),
     );
   }
 
-  SliverAppBar _buildAppBar(bool isDark) {
-    return SliverAppBar(
-      pinned: true,
+  Color _colorForRole(String role) {
+    switch (role) {
+      case 'photographer': return AppTheme.rolePhotographer;
+      case 'makeuper': return AppTheme.roleMakeuper;
+      default: return AppTheme.roleUser;
+    }
+  }
+
+  String _titleForRole(String role) {
+    switch (role) {
+      case 'photographer': return 'Booking của tôi 📸';
+      case 'makeuper': return 'Booking của tôi 💄';
+      default: return 'Lịch sử đặt lịch';
+    }
+  }
+
+  PreferredSizeWidget _buildAppBar(bool isDark, String role) {
+    final color = _colorForRole(role);
+    return AppBar(
       backgroundColor: isDark ? AppTheme.surface : Colors.white,
       elevation: 0,
+      automaticallyImplyLeading: false,
       title: Row(children: [
         Container(
           width: 32, height: 32,
           decoration: BoxDecoration(
-            color: _roleColor.withOpacity(0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: const Icon(Icons.calendar_month_rounded, color: _roleColor, size: 18),
+          child: Icon(Icons.calendar_month_rounded, color: color, size: 18),
         ),
         const SizedBox(width: 10),
-        Text('Lịch sử đặt lịch',
+        Text(_titleForRole(role),
             style: TextStyle(
               color: isDark ? Colors.white : AppTheme.lightTextPrimary,
               fontSize: 18,
@@ -103,73 +125,68 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
               color: isDark ? Colors.amber : Colors.orange),
           onPressed: () => context.read<ThemeProvider>().toggleTheme(),
         ),
-        IconButton(
-          icon: Icon(Icons.logout,
-              color: isDark ? Colors.white : AppTheme.lightTextPrimary),
-          onPressed: () => _logout(context),
-        ),
       ],
     );
   }
 
-  SliverPersistentHeader _buildTabBar(bool isDark) {
-    return SliverPersistentHeader(
-      pinned: true,
-      delegate: _TabBarDelegate(
-        TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-          indicator: BoxDecoration(
-            color: _roleColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: Colors.transparent,
-          labelColor: Colors.white,
-          unselectedLabelColor: isDark ? Colors.white38 : Colors.grey,
-          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          tabs: _statusFilters.map((f) => Tab(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(f.icon, size: 14),
-                const SizedBox(width: 5),
-                Text(f.label),
-              ]),
-            ),
-          )).toList(),
+  Widget _buildTabBar(bool isDark, String role, Color color) {
+    return Container(
+      color: isDark ? AppTheme.primary : AppTheme.lightBg,
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+        indicator: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
         ),
-        isDark: isDark,
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelColor: Colors.white,
+        unselectedLabelColor: isDark ? Colors.white38 : Colors.grey,
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        tabs: _statusFilters.map((f) => Tab(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(f.icon, size: 14),
+              const SizedBox(width: 5),
+              Text(f.label),
+            ]),
+          ),
+        )).toList(),
       ),
     );
   }
 
-  Future<void> _logout(BuildContext context) async {
-    await context.read<AuthProvider>().logout();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
-    }
-  }
 }
 
 // ── Booking List per tab ──────────────────────────────────────
 class _BookingList extends StatelessWidget {
   final String uid;
+  final String role;
   final String? statusFilter;
   final Color filterColor;
   final bool isDark;
 
   const _BookingList({
     required this.uid,
+    required this.role,
     required this.statusFilter,
     required this.filterColor,
     required this.isDark,
   });
+
+  String get _queryField {
+    switch (role) {
+      case 'photographer': return 'photographerId';
+      case 'makeuper': return 'makeuperId';
+      default: return 'userId';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,11 +196,11 @@ class _BookingList extends StatelessWidget {
     if (statusFilter == null) {
       query = FirebaseFirestore.instance
           .collection('bookings')
-          .where('userId', isEqualTo: uid);
+          .where(_queryField, isEqualTo: uid);
     } else {
       query = FirebaseFirestore.instance
           .collection('bookings')
-          .where('userId', isEqualTo: uid)
+          .where(_queryField, isEqualTo: uid)
           .where('status', isEqualTo: statusFilter);
     }
 
@@ -1038,25 +1055,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  final bool isDark;
-
-  _TabBarDelegate(this.tabBar, {required this.isDark});
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-        color: isDark ? AppTheme.primary : AppTheme.lightBg, child: tabBar);
-  }
-
-  @override
-  double get maxExtent => 56;
-  @override
-  double get minExtent => 56;
-  @override
-  bool shouldRebuild(_TabBarDelegate old) => old.isDark != isDark;
-}
 
 class _StatusFilter {
   final String label;

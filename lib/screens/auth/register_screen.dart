@@ -7,9 +7,9 @@ import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_button.dart';
-import '../user/user_main_screen.dart';           // ← ĐÃ SỬA
-import '../photographer/photographer_home_screen.dart';
-import '../makeuper/makeuper_home_screen.dart';
+import '../user/user_main_screen.dart';
+import '../photographer/photographer_main_screen.dart';
+import '../makeuper/makeuper_main_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -108,13 +108,13 @@ class _RegisterScreenState extends State<RegisterScreen>
     Widget home;
     switch (role) {
       case UserRole.photographer:
-        home = const PhotographerHomeScreen();
+        home = const PhotographerMainScreen();
         break;
       case UserRole.makeuper:
-        home = const MakeuperHomeScreen();
+        home = const MakeuperMainScreen();
         break;
       default:
-        home = const UserMainScreen();           // ← ĐÃ SỬA
+        home = const UserMainScreen();
     }
     Navigator.pushAndRemoveUntil(
       context,

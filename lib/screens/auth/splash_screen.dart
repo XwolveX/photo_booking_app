@@ -4,8 +4,8 @@ import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'login_screen.dart';
 import '../user/user_main_screen.dart';
-import '../photographer/photographer_home_screen.dart';
-import '../makeuper/makeuper_home_screen.dart';
+import '../photographer/photographer_main_screen.dart';
+import '../makeuper/makeuper_main_screen.dart';
 import '../../models/user_model.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -60,10 +60,10 @@ class _SplashScreenState extends State<SplashScreen>
     Widget home;
     switch (role) {
       case UserRole.photographer:
-        home = const PhotographerHomeScreen();
+        home = const PhotographerMainScreen();
         break;
       case UserRole.makeuper:
-        home = const MakeuperHomeScreen();
+        home = const MakeuperMainScreen();
         break;
       default:
         home = const UserMainScreen();
@@ -124,7 +124,6 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 40),
-                  // Hiện loading nhỏ khi đang chờ Firebase restore session
                   if (!authProvider.isInitialized)
                     SizedBox(
                       width: 20,
