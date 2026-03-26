@@ -46,7 +46,7 @@ class _PhotographerMainScreenState extends State<PhotographerMainScreen> {
       child: Scaffold(
         backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
         body: IndexedStack(
-          index: _currentIndex == 2 ? 0 : _currentIndex,
+          index: _currentIndex,
           children: _screens,
         ),
         bottomNavigationBar: _buildBottomNav(isDark, uid),

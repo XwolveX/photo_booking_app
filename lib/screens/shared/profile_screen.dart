@@ -35,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TextEditingController _phoneCtrl;
   late TextEditingController _bioCtrl;
 
-  File? _pendingAvatarFile; // ảnh chọn chưa upload (chỉ dùng khi ở edit view)
+  File? _pendingAvatarFile;
 
   @override
   void initState() {
@@ -56,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  // ── Role helpers ───────────────────────────────────────────
   Color _roleColor(UserRole role) {
     switch (role) {
       case UserRole.photographer:
@@ -89,7 +88,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     ));
   }
 
-  // ── Pick avatar from gallery or camera ────────────────────
   Future<void> _pickAvatar({required bool fromCamera}) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
@@ -102,7 +100,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     setState(() => _pendingAvatarFile = File(picked.path));
   }
 
-  // ── Show pick source bottom sheet ─────────────────────────
   void _showPickSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -114,7 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Handle
           Container(
             width: 40, height: 4,
             margin: const EdgeInsets.only(bottom: 20),
@@ -195,7 +191,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ── Upload avatar to Firebase Storage ─────────────────────
   Future<String?> _uploadAvatarFile(File file, String uid) async {
     try {
       final ref = FirebaseStorage.instance
@@ -212,7 +207,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // ── Save profile (with optional avatar) ───────────────────
   Future<void> _saveProfile() async {
     if (_nameCtrl.text.trim().isEmpty) {
       _snack('Họ tên không được để trống', AppTheme.error);
@@ -224,7 +218,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       String? newAvatarUrl;
 
-      // Upload avatar nếu có chọn ảnh mới
       if (_pendingAvatarFile != null) {
         setState(() => _isUploadingAvatar = true);
         newAvatarUrl = await _uploadAvatarFile(_pendingAvatarFile!, uid);
@@ -359,9 +352,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════
-  // PROFILE VIEW
-  // ══════════════════════════════════════════════════════════
   Widget _buildProfileView(bool isDark, UserModel user, Color color) {
     return NestedScrollView(
       headerSliverBuilder: (_, __) => [
@@ -380,6 +370,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   SliverAppBar _buildAppBar(bool isDark, UserModel user, Color color) {
+    final isProvider = user.role == UserRole.photographer || user.role == UserRole.makeuper;
+
     return SliverAppBar(
       pinned: true,
       backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
@@ -392,38 +384,38 @@ class _ProfileScreenState extends State<ProfileScreen>
             fontSize: 17,
           )),
       actions: [
-        IconButton(
-          tooltip: 'Lịch sử booking',
-          icon: Stack(clipBehavior: Clip.none, children: [
-            Icon(Icons.calendar_month_rounded,
-                color:
-                isDark ? Colors.white : AppTheme.lightTextPrimary,
-                size: 24),
-            Positioned(
-              top: -1, right: -1,
-              child: Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                      color: isDark ? AppTheme.primary : AppTheme.lightBg,
-                      width: 1.5),
+        // Chỉ hiện nút lịch sử booking cho user thường
+        if (!isProvider)
+          IconButton(
+            tooltip: 'Lịch sử booking',
+            icon: Stack(clipBehavior: Clip.none, children: [
+              Icon(Icons.calendar_month_rounded,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  size: 24),
+              Positioned(
+                top: -1, right: -1,
+                child: Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: isDark ? AppTheme.primary : AppTheme.lightBg,
+                        width: 1.5),
+                  ),
                 ),
               ),
-            ),
-          ]),
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(
-                  builder: (_) => const BookingHistoryScreen())),
-        ),
+            ]),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const BookingHistoryScreen())),
+          ),
         PendingTagBadge(
           uid: user.uid,
           child: IconButton(
             tooltip: 'Thẻ gắn tag',
             icon: Icon(Icons.person_pin_rounded,
-                color:
-                isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 size: 24),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
@@ -482,13 +474,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   SliverToBoxAdapter _buildHeaderInfo(
       bool isDark, UserModel user, Color color) {
+    final isProvider = user.role == UserRole.photographer || user.role == UserRole.makeuper;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         child:
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            // Avatar — tap để chụp/chọn ảnh nhanh (không cần vào edit)
             _AvatarWidget(
               user: user,
               color: color,
@@ -573,14 +566,13 @@ class _ProfileScreenState extends State<ProfileScreen>
             ]),
           ],
           const SizedBox(height: 12),
-          _buildActionButtons(isDark, user, color),
+          _buildActionButtons(isDark, user, color, isProvider),
           const SizedBox(height: 4),
         ]),
       ),
     );
   }
 
-  // Quick avatar sheet (từ profile view, không cần vào edit)
   void _showQuickAvatarSheet(bool isDark, UserModel user) {
     showModalBottomSheet(
       context: context,
@@ -640,7 +632,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // Upload avatar trực tiếp từ profile view (không cần lưu profile)
   Future<void> _quickUploadAvatar(
       {required bool fromCamera,
         required String uid,
@@ -658,8 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     _snack('⏳ Đang tải ảnh lên...', Colors.blue);
 
     try {
-      final url =
-      await _uploadAvatarFile(File(picked.path), uid);
+      final url = await _uploadAvatarFile(File(picked.path), uid);
       if (url == null) throw Exception('Upload thất bại');
 
       await FirebaseFirestore.instance
@@ -733,7 +723,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildActionButtons(bool isDark, UserModel user, Color color) {
+  // Truyền thêm isProvider để ẩn/hiện nút lịch sử
+  Widget _buildActionButtons(bool isDark, UserModel user, Color color, bool isProvider) {
     return Row(children: [
       Expanded(
         child: _OutlineBtn(
@@ -742,17 +733,20 @@ class _ProfileScreenState extends State<ProfileScreen>
           onTap: () => setState(() => _isEditing = true),
         ),
       ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: _OutlineBtn(
-          label: '🗓 Lịch sử Booking',
-          isDark: isDark,
-          color: color,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(
-                  builder: (_) => const BookingHistoryScreen())),
+      // Chỉ hiện nút Lịch sử Booking cho user thường
+      if (!isProvider) ...[
+        const SizedBox(width: 8),
+        Expanded(
+          child: _OutlineBtn(
+            label: '🗓 Lịch sử Booking',
+            isDark: isDark,
+            color: color,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const BookingHistoryScreen())),
+          ),
         ),
-      ),
+      ],
       const SizedBox(width: 8),
       _SquareBtn(
         icon: Icons.person_add_alt_1_outlined,
@@ -833,9 +827,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════
-  // EDIT VIEW
-  // ══════════════════════════════════════════════════════════
   Widget _buildEditView(bool isDark, UserModel user, Color color) {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.primary : AppTheme.lightBg,
@@ -878,11 +869,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // ── Avatar editor ──────────────────────────────
           Center(
             child: Column(children: [
               Stack(children: [
-                // Avatar preview
                 _AvatarWidget(
                   user: user,
                   color: color,
@@ -892,7 +881,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   pendingFile: _pendingAvatarFile,
                   onTap: () => _showPickSheet(isDark),
                 ),
-                // Camera badge
                 Positioned(
                   bottom: 0, right: 0,
                   child: GestureDetector(
@@ -920,7 +908,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ]),
               const SizedBox(height: 10),
-              // Status text
               GestureDetector(
                 onTap: () => _showPickSheet(isDark),
                 child: Text(
@@ -936,7 +923,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               ),
-              // Preview badge nếu đã chọn ảnh
               if (_pendingAvatarFile != null) ...[
                 const SizedBox(height: 6),
                 Container(
@@ -964,7 +950,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 24),
 
-          // ── Editable fields ────────────────────────────
           _EditCard(isDark: isDark, children: [
             _FieldRow(
                 isDark: isDark,
@@ -990,7 +975,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           ]),
           const SizedBox(height: 16),
 
-          // ── Read-only ──────────────────────────────────
           _EditCard(isDark: isDark, children: [
             _ReadRow(
                 isDark: isDark,
@@ -1011,9 +995,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 }
 
-// ══════════════════════════════════════════════════════════
-// AVATAR WIDGET — dùng chung ở cả profile view và edit view
-// ══════════════════════════════════════════════════════════
+// ── AVATAR WIDGET ─────────────────────────────────────────────
 class _AvatarWidget extends StatelessWidget {
   final UserModel user;
   final Color color;
@@ -1075,17 +1057,13 @@ class _AvatarWidget extends StatelessWidget {
               ),
             )
                 : pendingFile != null
-            // Preview ảnh mới chọn
                 ? Image.file(pendingFile!, fit: BoxFit.cover)
                 : user.avatarUrl != null
-            // Ảnh từ Firebase Storage
                 ? Image.network(
               user.avatarUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  _placeholder(size),
+              errorBuilder: (_, __, ___) => _placeholder(size),
             )
-            // Placeholder icon
                 : _placeholder(size),
           ),
         ),
@@ -1109,7 +1087,6 @@ class _AvatarWidget extends StatelessWidget {
   }
 }
 
-// ── Pick Option tile ──────────────────────────────────────────
 class _PickOption extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1155,9 +1132,7 @@ class _PickOption extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-// POSTS GRID
-// ══════════════════════════════════════════════════════════
+// ── POSTS GRID ────────────────────────────────────────────────
 class _PostsGrid extends StatelessWidget {
   final String uid;
   final Color color;
@@ -1286,9 +1261,7 @@ class _PostThumbnail extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-// TAGGED GRID
-// ══════════════════════════════════════════════════════════
+// ── TAGGED GRID ───────────────────────────────────────────────
 class _TaggedGrid extends StatelessWidget {
   final String uid;
   final Color color;
@@ -1381,10 +1354,7 @@ class _TaggedGrid extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-// SHARED WIDGETS
-// ══════════════════════════════════════════════════════════
-
+// ── SHARED WIDGETS ────────────────────────────────────────────
 class _StatCol extends StatelessWidget {
   final String value;
   final String label;
@@ -1728,6 +1698,48 @@ class _TabHeaderDelegate extends SliverPersistentHeaderDelegate {
       old.bgColor != bgColor;
 }
 
-// ── PendingTagBadge (re-export từ tag_requests_screen) ────────
-// Dùng lại từ tag_requests_screen.dart — không cần khai báo lại
-// nếu đã import tag_requests_screen.dart ở trên
+class PendingTagBadge extends StatelessWidget {
+  final String uid;
+  final Widget child;
+
+  const PendingTagBadge(
+      {super.key, required this.uid, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('post_tags')
+          .where('taggedUserId', isEqualTo: uid)
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snap) {
+        final count = snap.data?.docs.length ?? 0;
+        if (count == 0) return child;
+        return Stack(clipBehavior: Clip.none, children: [
+          child,
+          Positioned(
+            top: -4,
+            right: -4,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: const BoxDecoration(
+                  color: AppTheme.secondary,
+                  shape: BoxShape.circle),
+              child: Center(
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ]);
+      },
+    );
+  }
+}
