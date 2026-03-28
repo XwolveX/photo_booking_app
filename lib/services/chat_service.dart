@@ -25,7 +25,6 @@ class ChatService {
     final snap = await ref.get();
 
     if (!snap.exists) {
-      // user1 = alphabetically first uid
       final sorted = [me.uid, otherId]..sort();
       final isUser1 = me.uid == sorted[0];
 
@@ -48,7 +47,7 @@ class ChatService {
     return chatId;
   }
 
-  // ── Gửi tin nhắn ─────────────────────────────────────────
+  // ── Gửi tin nhắn văn bản ──────────────────────────────────
   static Future<void> sendMessage({
     required String chatId,
     required UserModel sender,
@@ -62,7 +61,6 @@ class ChatService {
 
     final batch = _db.batch();
 
-    // Thêm message
     batch.set(msgRef, {
       'senderId': sender.uid,
       'senderName': sender.fullName,
@@ -73,7 +71,6 @@ class ChatService {
       'isRead': false,
     });
 
-    // Cập nhật chat doc
     final chatSnap = await chatRef.get();
     final data = chatSnap.data()!;
     final isUser1 = data['user1Id'] == sender.uid;
@@ -82,7 +79,6 @@ class ChatService {
       'lastMessage': text.trim(),
       'lastMessageAt': FieldValue.serverTimestamp(),
       'lastMessageSenderId': sender.uid,
-      // Tăng unread của người nhận
       if (isUser1) 'unreadUser2': FieldValue.increment(1),
       if (!isUser1) 'unreadUser1': FieldValue.increment(1),
     });
@@ -90,32 +86,50 @@ class ChatService {
     await batch.commit();
   }
 
-  // ── Stream messages ───────────────────────────────────────
+  // ── Gửi sticker ───────────────────────────────────────────
+  static Future<void> sendSticker({
+    required String chatId,
+    required UserModel sender,
+    required String stickerAsset, // e.g. 'assets/stickers/sticker_01.png'
+    required String otherUserId,
+  }) async {
+    final chatRef = _db.collection('chats').doc(chatId);
+    final msgRef = chatRef.collection('messages').doc();
+
+    final batch = _db.batch();
+
+    batch.set(msgRef, {
+      'senderId': sender.uid,
+      'senderName': sender.fullName,
+      'senderAvatar': sender.avatarUrl,
+      'text': stickerAsset,   // lưu path asset làm "text"
+      'type': 'sticker',
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+
+    final chatSnap = await chatRef.get();
+    final data = chatSnap.data()!;
+    final isUser1 = data['user1Id'] == sender.uid;
+
+    batch.update(chatRef, {
+      'lastMessage': '🎉 Sticker',
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageSenderId': sender.uid,
+      if (isUser1) 'unreadUser2': FieldValue.increment(1),
+      if (!isUser1) 'unreadUser1': FieldValue.increment(1),
+    });
+
+    await batch.commit();
+  }
+
+  // ── Stream tin nhắn ───────────────────────────────────────
   static Stream<QuerySnapshot> messagesStream(String chatId) {
-    return _db
+    return FirebaseFirestore.instance
         .collection('chats')
         .doc(chatId)
         .collection('messages')
         .orderBy('createdAt', descending: false)
-        .snapshots();
-  }
-
-  // ── Stream danh sách chat của 1 user ──────────────────────
-  static Stream<QuerySnapshot> chatsStream(String uid) {
-    // Firestore không hỗ trợ OR query trực tiếp nên dùng 2 stream
-    // merge ở UI layer. Trả về stream user1
-    return _db
-        .collection('chats')
-        .where('user1Id', isEqualTo: uid)
-        .orderBy('lastMessageAt', descending: true)
-        .snapshots();
-  }
-
-  static Stream<QuerySnapshot> chatsStream2(String uid) {
-    return _db
-        .collection('chats')
-        .where('user2Id', isEqualTo: uid)
-        .orderBy('lastMessageAt', descending: true)
         .snapshots();
   }
 
@@ -129,23 +143,27 @@ class ChatService {
     if (!snap.exists) return;
     final data = snap.data()!;
     final isUser1 = data['user1Id'] == myId;
+
     await chatRef.update({
       if (isUser1) 'unreadUser1': 0,
       if (!isUser1) 'unreadUser2': 0,
     });
   }
 
-  // ── Tổng unread của 1 user (dùng cho badge) ───────────────
-  static Stream<int> totalUnreadStream(String uid) {
-    // Merge 2 stream trong service không dễ,
-    // dùng cách đơn giản: query cả 2 và tính tổng ở UI
+  // ── Stream danh sách chat theo userId ─────────────────────
+  static Stream<QuerySnapshot> chatsStream(String uid) {
     return _db
         .collection('chats')
         .where('user1Id', isEqualTo: uid)
-        .snapshots()
-        .map((snap) => snap.docs.fold<int>(
-            0,
-            (sum, doc) =>
-                sum + ((doc.data()['unreadUser1'] as int?) ?? 0)));
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots();
+  }
+
+  static Stream<QuerySnapshot> chatsStream2(String uid) {
+    return _db
+        .collection('chats')
+        .where('user2Id', isEqualTo: uid)
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots();
   }
 }

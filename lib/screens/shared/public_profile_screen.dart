@@ -119,7 +119,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator(color: AppTheme.secondary)),
+            body: Center(
+                child: CircularProgressIndicator(color: AppTheme.secondary)),
           );
         }
 
@@ -147,7 +148,13 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
               controller: _tabCtrl,
               children: [
                 _PostsGrid(uid: user.uid, color: color, isDark: isDark),
-                _ServicesList(uid: user.uid, color: color, isDark: isDark, user: user, onChat: () => _openChat(user)),
+                _ServicesList(
+                  uid: user.uid,
+                  color: color,
+                  isDark: isDark,
+                  user: user,
+                  onChat: () => _openChat(user),
+                ),
               ],
             ),
           ),
@@ -186,7 +193,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child:
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Avatar + Stats
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             // Avatar
@@ -212,7 +220,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                       ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
                       : Container(
                       color: color.withOpacity(0.12),
-                      child: Icon(_roleIcon(user.role), color: color, size: 38)),
+                      child: Icon(_roleIcon(user.role),
+                          color: color, size: 38)),
                 ),
               ),
             ),
@@ -231,7 +240,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                     fontWeight: FontWeight.w700)),
             const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(6),
@@ -241,7 +251,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                 const SizedBox(width: 3),
                 Text(user.roleDisplayName,
                     style: TextStyle(
-                        color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600)),
               ]),
             ),
             // Rating
@@ -262,7 +274,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
             const SizedBox(height: 6),
             Text(user.bio!,
                 style: TextStyle(
-                    color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? Colors.white70
+                        : AppTheme.lightTextSecondary,
                     fontSize: 13,
                     height: 1.4)),
           ],
@@ -278,7 +292,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                   onTap: _chatLoading
                       ? null
                       : () async {
-                    final me = context.read<AuthProvider>().currentUser;
+                    final me =
+                        context.read<AuthProvider>().currentUser;
                     if (me != null) await _openChat(user);
                   },
                   child: AnimatedContainer(
@@ -301,16 +316,18 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                           height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                          : Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.chat_bubble_rounded,
-                            color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
-                        const Text('Nhắn tin',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13)),
-                      ]),
+                          : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.chat_bubble_rounded,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text('Nhắn tin',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13)),
+                          ]),
                     ),
                   ),
                 ),
@@ -341,7 +358,6 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
   }
 
   Widget _buildStats(bool isDark, UserModel user, Color color) {
-    // Chỉ query posts (public) — không query bookings của người khác (permission denied)
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('posts')
@@ -355,8 +371,10 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _StatCol(value: '$posts', label: 'Bài viết', isDark: isDark),
-            _StatCol(value: '$totalBookings', label: 'Booking', isDark: isDark),
+            _StatCol(
+                value: '$posts', label: 'Bài viết', isDark: isDark),
+            _StatCol(
+                value: '$totalBookings', label: 'Booking', isDark: isDark),
             _StatCol(
               value: rating > 0 ? rating.toStringAsFixed(1) : '—',
               label: 'Đánh giá',
@@ -377,7 +395,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
         child: TabBar(
           controller: _tabCtrl,
           labelColor: color,
-          unselectedLabelColor: isDark ? Colors.white24 : Colors.grey[300],
+          unselectedLabelColor:
+          isDark ? Colors.white24 : Colors.grey[300],
           indicatorColor: color,
           indicatorWeight: 1.5,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -389,14 +408,18 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.grid_view_rounded, size: 17),
                 SizedBox(width: 5),
-                Text('Bài viết', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('Bài viết',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
               ]),
             ),
             Tab(
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.design_services_rounded, size: 17),
                 SizedBox(width: 5),
-                Text('Dịch vụ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('Dịch vụ',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
               ]),
             ),
           ],
@@ -413,7 +436,11 @@ class _StatCol extends StatelessWidget {
   final bool isDark;
   final IconData? icon;
 
-  const _StatCol({required this.value, required this.label, required this.isDark, this.icon});
+  const _StatCol(
+      {required this.value,
+        required this.label,
+        required this.isDark,
+        this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +470,8 @@ class _PostsGrid extends StatelessWidget {
   final Color color;
   final bool isDark;
 
-  const _PostsGrid({required this.uid, required this.color, required this.isDark});
+  const _PostsGrid(
+      {required this.uid, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -463,7 +491,8 @@ class _PostsGrid extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(40),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.grid_view_rounded, size: 48, color: color.withOpacity(0.3)),
+                Icon(Icons.grid_view_rounded,
+                    size: 48, color: color.withOpacity(0.3)),
                 const SizedBox(height: 12),
                 Text('Chưa có bài viết nào',
                     style: TextStyle(
@@ -503,26 +532,35 @@ class _PostsGrid extends StatelessWidget {
                     child: Icon(Icons.article_rounded,
                         color: color.withOpacity(0.3), size: 28)),
                 Positioned(
-                  bottom: 0, left: 0, right: 0,
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   child: Container(
                     height: 30,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                        colors: [
+                          Colors.black.withOpacity(0.5),
+                          Colors.transparent
+                        ],
                       ),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: 5, left: 6,
+                  bottom: 5,
+                  left: 6,
                   child: Row(children: [
-                    const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
+                    const Icon(Icons.favorite_rounded,
+                        color: Colors.white, size: 11),
                     const SizedBox(width: 3),
                     Text('${post.likeCount}',
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
                   ]),
                 ),
               ]),
@@ -567,7 +605,8 @@ class _ServicesList extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(40),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.design_services_rounded, size: 48, color: color.withOpacity(0.3)),
+                Icon(Icons.design_services_rounded,
+                    size: 48, color: color.withOpacity(0.3)),
                 const SizedBox(height: 12),
                 Text('Chưa có dịch vụ nào',
                     style: TextStyle(
@@ -586,9 +625,8 @@ class _ServicesList extends StatelessWidget {
             final name = data['name'] as String? ?? '';
             final desc = data['description'] as String? ?? '';
             final price = (data['price'] as num?)?.toDouble() ?? 0;
-            final priceStr = price > 0
-                ? '${_fmt(price.toInt())}đ'
-                : 'Liên hệ';
+            final priceStr =
+            price > 0 ? '${_fmt(price.toInt())}đ' : 'Liên hệ';
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -606,44 +644,56 @@ class _ServicesList extends StatelessWidget {
               ),
               child: Row(children: [
                 Container(
-                  width: 48, height: 48,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                       color: color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.design_services_rounded, color: color, size: 24),
+                  child: Icon(Icons.design_services_rounded,
+                      color: color, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(name,
-                        style: TextStyle(
-                            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14)),
-                    if (desc.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(desc,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.grey,
-                              fontSize: 12,
-                              height: 1.4)),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(priceStr,
-                        style: TextStyle(
-                            color: color, fontWeight: FontWeight.w800, fontSize: 15)),
-                  ]),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : AppTheme.lightTextPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                        if (desc.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(desc,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.grey,
+                                  fontSize: 12,
+                                  height: 1.4)),
+                        ],
+                        const SizedBox(height: 6),
+                        Text(priceStr,
+                            style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15)),
+                      ]),
                 ),
                 const SizedBox(width: 8),
-                // Nút nhắn tin
+                // Nút nhắn tin / hỏi giá
                 GestureDetector(
                   onTap: onChat,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                        color: color, borderRadius: BorderRadius.circular(10)),
+                        color: color,
+                        borderRadius: BorderRadius.circular(10)),
                     child: const Text('Hỏi giá',
                         style: TextStyle(
                             color: Colors.white,
