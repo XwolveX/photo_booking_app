@@ -3,13 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
+import '../../services/otp_service.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_button.dart';
-import '../user/user_main_screen.dart';
-import '../photographer/photographer_main_screen.dart';
-import '../makeuper/makeuper_main_screen.dart';
+import 'email_otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -32,6 +31,8 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   int _currentStep = 0;
   UserRole? _selectedRole;
+
+  final OtpService _otpService = OtpService();
 
   late AnimationController _slideController;
   late Animation<Offset> _slideAnim;
@@ -91,7 +92,35 @@ class _RegisterScreenState extends State<RegisterScreen>
     if (!mounted) return;
 
     if (success) {
-      _navigateByRole(_selectedRole!);
+      final user = auth.currentUser!;
+
+      // Gửi email OTP trước khi cho vào app
+      try {
+        await _otpService.sendEmailOtp(uid: user.uid, email: user.email);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gửi OTP thất bại: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Chuyển sang màn hình xác minh email OTP
+      // EmailOtpScreen sẽ tự xử lý tiếp: verify email → kiểm tra phoneVerified → vào Home
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailOtpScreen(uid: user.uid, email: user.email),
+        ),
+            (route) => false,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -102,25 +131,6 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
       );
     }
-  }
-
-  void _navigateByRole(UserRole role) {
-    Widget home;
-    switch (role) {
-      case UserRole.photographer:
-        home = const PhotographerMainScreen();
-        break;
-      case UserRole.makeuper:
-        home = const MakeuperMainScreen();
-        break;
-      default:
-        home = const UserMainScreen();
-    }
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => home),
-          (route) => false,
-    );
   }
 
   @override
