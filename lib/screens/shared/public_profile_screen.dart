@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../models/post_model.dart';
 import '../chat/chat_screen.dart';
+import '../booking/booking_step1_providers.dart'; // ← THÊM MỚI
 import 'post_Detail_Screen.dart';
 
 class PublicProfileScreen extends StatefulWidget {
@@ -106,6 +107,30 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
     }
   }
 
+  // ── THÊM MỚI: điều hướng tới BookingStep1Screen ────────────
+  void _goToBooking(UserModel provider, Map<String, dynamic> serviceData) {
+    final isPhoto = provider.role == UserRole.photographer;
+    final providerMap = {
+      'uid': provider.uid,
+      'fullName': provider.fullName,
+      'bio': provider.bio ?? '',
+      'price': (serviceData['price'] as num?)?.toDouble() ?? 0,
+      'rating': provider.rating,
+      'role': provider.role.name,
+      'serviceName': serviceData['name'] ?? '',
+    };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingStep1Screen(
+          preSelectedPhotographer: isPhoto ? providerMap : null,
+          preSelectedMakeuper: !isPhoto ? providerMap : null,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -148,12 +173,13 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
               controller: _tabCtrl,
               children: [
                 _PostsGrid(uid: user.uid, color: color, isDark: isDark),
+                // ── ĐÃ SỬA: dùng onBook thay vì onChat ──────────
                 _ServicesList(
                   uid: user.uid,
                   color: color,
                   isDark: isDark,
                   user: user,
-                  onChat: () => _openChat(user),
+                  onBook: (serviceData) => _goToBooking(user, serviceData),
                 ),
               ],
             ),
@@ -235,9 +261,11 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
           Row(children: [
             Text(user.fullName,
                 style: TextStyle(
-                    color: isDark ? Colors.white : AppTheme.lightTextPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700)),
+                    color: isDark
+                        ? Colors.white
+                        : AppTheme.lightTextPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14)),
             const SizedBox(width: 6),
             Container(
               padding:
@@ -256,22 +284,10 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                         fontWeight: FontWeight.w600)),
               ]),
             ),
-            // Rating
-            if ((user.rating ?? 0) > 0) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
-              const SizedBox(width: 2),
-              Text(user.rating!.toStringAsFixed(1),
-                  style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.grey[700],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-            ],
           ]),
 
-          // Bio
-          if (user.bio != null && user.bio!.isNotEmpty) ...[
-            const SizedBox(height: 6),
+          const SizedBox(height: 4),
+          if (user.bio != null && user.bio!.isNotEmpty)
             Text(user.bio!,
                 style: TextStyle(
                     color: isDark
@@ -279,7 +295,6 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
                         : AppTheme.lightTextSecondary,
                     fontSize: 13,
                     height: 1.4)),
-          ],
 
           const SizedBox(height: 12),
 
@@ -287,27 +302,13 @@ class _PublicProfileScreenState extends State<PublicProfileScreen>
           if (!isMe)
             Row(children: [
               Expanded(
-                flex: 2,
                 child: GestureDetector(
-                  onTap: _chatLoading
-                      ? null
-                      : () async {
-                    final me =
-                        context.read<AuthProvider>().currentUser;
-                    if (me != null) await _openChat(user);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                  onTap: () => _openChat(user),
+                  child: Container(
                     height: 38,
                     decoration: BoxDecoration(
                       color: color,
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                            color: color.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3))
-                      ],
                     ),
                     child: Center(
                       child: _chatLoading
@@ -459,7 +460,8 @@ class _StatCol extends StatelessWidget {
       const SizedBox(height: 2),
       Text(label,
           style: TextStyle(
-              color: isDark ? Colors.white38 : Colors.grey, fontSize: 11)),
+              color: isDark ? Colors.white38 : Colors.grey,
+              fontSize: 11)),
     ]);
   }
 }
@@ -485,41 +487,44 @@ class _PostsGrid extends StatelessWidget {
         if (snap.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator(color: color));
         }
+
         final docs = snap.data?.docs ?? [];
         if (docs.isEmpty) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Icon(Icons.grid_view_rounded,
                     size: 48, color: color.withOpacity(0.3)),
                 const SizedBox(height: 12),
                 Text('Chưa có bài viết nào',
                     style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.grey,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-              ]),
+                        color: isDark ? Colors.white38 : Colors.grey,
+                        fontSize: 14)),
+              ],
             ),
           );
         }
+
+        final posts = docs
+            .map((d) => PostModel.fromFirestore(
+            d.data() as Map<String, dynamic>, d.id))
+            .toList();
+
         return GridView.builder(
-          padding: const EdgeInsets.all(1),
+          padding: const EdgeInsets.all(2),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 1.5,
-            mainAxisSpacing: 1.5,
-          ),
-          itemCount: docs.length,
-          itemBuilder: (_, i) {
-            final post = PostModel.fromFirestore(
-                docs[i].data() as Map<String, dynamic>, docs[i].id);
+              crossAxisCount: 3,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2),
+          itemCount: posts.length,
+          itemBuilder: (context, i) {
+            final post = posts[i];
             return GestureDetector(
               onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PostDetailScreen(post: post),
-                  )),
+                      builder: (_) => PostDetailScreen(post: post))),
               child: Stack(fit: StackFit.expand, children: [
                 post.coverImageUrl != null
                     ? Image.network(post.coverImageUrl!, fit: BoxFit.cover,
@@ -578,15 +583,26 @@ class _ServicesList extends StatelessWidget {
   final Color color;
   final bool isDark;
   final UserModel user;
-  final VoidCallback onChat;
+  // ── ĐÃ SỬA: onBook nhận serviceData thay vì onChat ─────────
+  final void Function(Map<String, dynamic> serviceData) onBook;
 
   const _ServicesList({
     required this.uid,
     required this.color,
     required this.isDark,
     required this.user,
-    required this.onChat,
+    required this.onBook,
   });
+
+  String _fmt(int price) {
+    final s = price.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(s[i]);
+    }
+    return buffer.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -600,59 +616,67 @@ class _ServicesList extends StatelessWidget {
           return Center(child: CircularProgressIndicator(color: color));
         }
         final docs = snap.data?.docs ?? [];
+
         if (docs.isEmpty) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Icon(Icons.design_services_rounded,
                     size: 48, color: color.withOpacity(0.3)),
                 const SizedBox(height: 12),
                 Text('Chưa có dịch vụ nào',
                     style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.grey,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-              ]),
+                        color: isDark ? Colors.white38 : Colors.grey,
+                        fontSize: 14)),
+              ],
             ),
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           itemCount: docs.length,
-          itemBuilder: (_, i) {
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, i) {
             final data = docs[i].data() as Map<String, dynamic>;
-            final name = data['name'] as String? ?? '';
-            final desc = data['description'] as String? ?? '';
-            final price = (data['price'] as num?)?.toDouble() ?? 0;
-            final priceStr =
-            price > 0 ? '${_fmt(price.toInt())}đ' : 'Liên hệ';
+            final name = data['name'] ?? '';
+            final desc = data['description'] ?? '';
+            final price = (data['price'] as num?)?.toInt() ?? 0;
+            final priceStr = price > 0 ? '${_fmt(price)}đ' : 'Liên hệ';
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.inputFill : Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: color.withOpacity(0.15)),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.06)
+                      : Colors.grey.withOpacity(0.12),
+                ),
                 boxShadow: [
                   BoxShadow(
-                      color: color.withOpacity(0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3))
+                    color: color.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Row(children: [
+                // Icon dịch vụ
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12)),
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Icon(Icons.design_services_rounded,
-                      color: color, size: 24),
+                      color: color, size: 22),
                 ),
                 const SizedBox(width: 12),
+                // Tên + mô tả + giá
                 Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,16 +709,16 @@ class _ServicesList extends StatelessWidget {
                       ]),
                 ),
                 const SizedBox(width: 8),
-                // Nút nhắn tin / hỏi giá
+                // ── ĐÃ SỬA: nút "Đặt lịch" thay vì "Hỏi giá" ──
                 GestureDetector(
-                  onTap: onChat,
+                  onTap: () => onBook(data),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                        horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
                         color: color,
                         borderRadius: BorderRadius.circular(10)),
-                    child: const Text('Hỏi giá',
+                    child: const Text('Đặt lịch',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -707,16 +731,6 @@ class _ServicesList extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _fmt(int price) {
-    final s = price.toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(s[i]);
-    }
-    return buffer.toString();
   }
 }
 
