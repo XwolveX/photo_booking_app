@@ -16,6 +16,7 @@ import '../user/booking_history_screen.dart';
 import '../shared/create_post_screen.dart';
 import '../shared/tag_requests_screen.dart';
 import 'Post_Detail_Screen.dart';
+import '../shared/district_setup_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -112,7 +113,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
               color: isDark ? Colors.white24 : Colors.grey.withOpacity(0.3),
@@ -195,7 +197,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       final ref = FirebaseStorage.instance
           .ref()
-          .child('avatars/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          .child(
+          'avatars/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
       final task = await ref.putFile(
         file,
         SettableMetadata(contentType: 'image/jpeg'),
@@ -265,13 +268,15 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? AppTheme.surface : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Đăng xuất?',
             style: TextStyle(
                 color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w700)),
         content: Text('Bạn sẽ cần đăng nhập lại để tiếp tục.',
-            style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+            style:
+            TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -283,8 +288,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
               minimumSize: Size.zero,
-              padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
@@ -329,6 +334,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           }
         }
 
+        // Lấy districts từ Firestore snapshot
+        final userData = snap.hasData && snap.data!.exists
+            ? snap.data!.data() as Map<String, dynamic>
+            : <String, dynamic>{};
+        final districts =
+        List<String>.from(userData['districts'] as List? ?? []);
+
         final color = _roleColor(user.role);
 
         return Scaffold(
@@ -346,17 +358,18 @@ class _ProfileScreenState extends State<ProfileScreen>
               : null,
           body: _isEditing
               ? _buildEditView(isDark, user, color)
-              : _buildProfileView(isDark, user, color),
+              : _buildProfileView(isDark, user, color, districts),
         );
       },
     );
   }
 
-  Widget _buildProfileView(bool isDark, UserModel user, Color color) {
+  Widget _buildProfileView(
+      bool isDark, UserModel user, Color color, List<String> districts) {
     return NestedScrollView(
       headerSliverBuilder: (_, __) => [
         _buildAppBar(isDark, user, color),
-        _buildHeaderInfo(isDark, user, color),
+        _buildHeaderInfo(isDark, user, color, districts),
         _buildTabBarSliver(isDark, color, user.uid),
       ],
       body: TabBarView(
@@ -370,7 +383,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   SliverAppBar _buildAppBar(bool isDark, UserModel user, Color color) {
-    final isProvider = user.role == UserRole.photographer || user.role == UserRole.makeuper;
+    final isProvider = user.role == UserRole.photographer ||
+        user.role == UserRole.makeuper;
 
     return SliverAppBar(
       pinned: true,
@@ -390,32 +404,42 @@ class _ProfileScreenState extends State<ProfileScreen>
             tooltip: 'Lịch sử booking',
             icon: Stack(clipBehavior: Clip.none, children: [
               Icon(Icons.calendar_month_rounded,
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  color: isDark
+                      ? Colors.white
+                      : AppTheme.lightTextPrimary,
                   size: 24),
               Positioned(
-                top: -1, right: -1,
+                top: -1,
+                right: -1,
                 child: Container(
-                  width: 8, height: 8,
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: isDark ? AppTheme.primary : AppTheme.lightBg,
+                        color: isDark
+                            ? AppTheme.primary
+                            : AppTheme.lightBg,
                         width: 1.5),
                   ),
                 ),
               ),
             ]),
-            onPressed: () => Navigator.push(context,
+            onPressed: () => Navigator.push(
+                context,
                 MaterialPageRoute(
-                    builder: (_) => const BookingHistoryScreen(showBackButton: true))),
+                    builder: (_) => const BookingHistoryScreen(
+                        showBackButton: true))),
           ),
         PendingTagBadge(
           uid: user.uid,
           child: IconButton(
             tooltip: 'Thẻ gắn tag',
             icon: Icon(Icons.person_pin_rounded,
-                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                color: isDark
+                    ? Colors.white
+                    : AppTheme.lightTextPrimary,
                 size: 24),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
@@ -434,7 +458,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         PopupMenuButton<String>(
           icon: Icon(Icons.menu_rounded,
-              color: isDark ? Colors.white : AppTheme.lightTextPrimary),
+              color: isDark
+                  ? Colors.white
+                  : AppTheme.lightTextPrimary),
           color: isDark ? AppTheme.surface : Colors.white,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -454,8 +480,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  PopupMenuItem<String> _menuItem(
-      bool isDark, String value, IconData icon, String label, Color color) {
+  PopupMenuItem<String> _menuItem(bool isDark, String value, IconData icon,
+      String label, Color color) {
     return PopupMenuItem(
       value: value,
       child: Row(children: [
@@ -473,8 +499,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   SliverToBoxAdapter _buildHeaderInfo(
-      bool isDark, UserModel user, Color color) {
-    final isProvider = user.role == UserRole.photographer || user.role == UserRole.makeuper;
+      bool isDark, UserModel user, Color color, List<String> districts) {
+    final isProvider = user.role == UserRole.photographer ||
+        user.role == UserRole.makeuper;
 
     return SliverToBoxAdapter(
       child: Padding(
@@ -499,13 +526,15 @@ class _ProfileScreenState extends State<ProfileScreen>
           Row(children: [
             Text(user.fullName,
                 style: TextStyle(
-                    color:
-                    isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    color: isDark
+                        ? Colors.white
+                        : AppTheme.lightTextPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700)),
             const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(6),
@@ -565,6 +594,123 @@ class _ProfileScreenState extends State<ProfileScreen>
                       fontSize: 12)),
             ]),
           ],
+
+          // ── THÊM MỚI: Hiển thị badge khu vực cho provider ──────
+          if (isProvider) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const DistrictSetupScreen()),
+              ),
+              child: districts.isEmpty
+                  ? Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppTheme.error.withOpacity(0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.location_off_rounded,
+                      color: AppTheme.error, size: 13),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Chưa có khu vực — Nhấn để cài đặt',
+                    style: TextStyle(
+                      color: AppTheme.error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ]),
+              )
+                  : Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ...districts.take(3).map(
+                        (d) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: color.withOpacity(0.25)),
+                      ),
+                      child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on_rounded,
+                                color: color, size: 11),
+                            const SizedBox(width: 3),
+                            Text(d,
+                                style: TextStyle(
+                                    color: color,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                    ),
+                  ),
+                  if (districts.length > 3)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: color.withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        '+${districts.length - 3} khu vực',
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  // Nút chỉnh sửa nhỏ
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.07)
+                          : Colors.grey.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.12)
+                              : Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded,
+                              color: isDark
+                                  ? Colors.white38
+                                  : Colors.grey,
+                              size: 11),
+                          const SizedBox(width: 3),
+                          Text('Sửa',
+                              style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.grey,
+                                  fontSize: 11)),
+                        ]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // ───────────────────────────────────────────────────────
+
           const SizedBox(height: 12),
           _buildActionButtons(isDark, user, color, isProvider),
           const SizedBox(height: 4),
@@ -580,15 +726,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       builder: (_) => Container(
         decoration: BoxDecoration(
           color: isDark ? AppTheme.surface : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius:
+          const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.grey.withOpacity(0.3),
+              color:
+              isDark ? Colors.white24 : Colors.grey.withOpacity(0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -709,7 +858,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       : rating > 0
                       ? rating.toStringAsFixed(1)
                       : '—',
-                  label: completed > 0 ? 'Hoàn thành' : 'Đánh giá',
+                  label:
+                  completed > 0 ? 'Hoàn thành' : 'Đánh giá',
                   isDark: isDark,
                   icon: rating > 0 && completed == 0
                       ? Icons.star_rounded
@@ -723,8 +873,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // Truyền thêm isProvider để ẩn/hiện nút lịch sử
-  Widget _buildActionButtons(bool isDark, UserModel user, Color color, bool isProvider) {
+  Widget _buildActionButtons(
+      bool isDark, UserModel user, Color color, bool isProvider) {
     return Row(children: [
       Expanded(
         child: _OutlineBtn(
@@ -741,17 +891,37 @@ class _ProfileScreenState extends State<ProfileScreen>
             label: '🗓 Lịch sử Booking',
             isDark: isDark,
             color: color,
-            onTap: () => Navigator.push(context,
+            onTap: () => Navigator.push(
+                context,
                 MaterialPageRoute(
-                    builder: (_) => const BookingHistoryScreen(showBackButton: true))),
+                    builder: (_) => const BookingHistoryScreen(
+                        showBackButton: true))),
           ),
         ),
       ],
+      // ── THÊM MỚI: nút khu vực cho provider ──────────────────
+      if (isProvider) ...[
+        const SizedBox(width: 8),
+        Expanded(
+          child: _OutlineBtn(
+            label: '📍 Khu vực',
+            isDark: isDark,
+            color: color,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DistrictSetupScreen()),
+            ),
+          ),
+        ),
+      ],
+      // ─────────────────────────────────────────────────────────
       const SizedBox(width: 8),
       _SquareBtn(
         icon: Icons.person_add_alt_1_outlined,
         isDark: isDark,
-        onTap: () => _snack('📤 Tính năng sắp ra mắt!', Colors.blue),
+        onTap: () =>
+            _snack('📤 Tính năng sắp ra mắt!', Colors.blue),
       ),
     ]);
   }
@@ -850,14 +1020,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: (_isSaving || _isUploadingAvatar) ? null : _saveProfile,
+            onPressed:
+            (_isSaving || _isUploadingAvatar) ? null : _saveProfile,
             child: _isSaving || _isUploadingAvatar
                 ? const SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.secondary))
+                    strokeWidth: 2, color: AppTheme.secondary))
                 : const Text('Lưu',
                 style: TextStyle(
                     color: AppTheme.secondary,
@@ -882,11 +1052,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   onTap: () => _showPickSheet(isDark),
                 ),
                 Positioned(
-                  bottom: 0, right: 0,
+                  bottom: 0,
+                  right: 0,
                   child: GestureDetector(
                     onTap: () => _showPickSheet(isDark),
                     child: Container(
-                      width: 32, height: 32,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
@@ -934,16 +1106,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                     border: Border.all(
                         color: AppTheme.success.withOpacity(0.3)),
                   ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: AppTheme.success, size: 12),
-                    SizedBox(width: 5),
-                    Text('Sẽ upload khi bấm Lưu',
-                        style: TextStyle(
-                            color: AppTheme.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+                  child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                            color: AppTheme.success, size: 12),
+                        SizedBox(width: 5),
+                        Text('Sẽ upload khi bấm Lưu',
+                            style: TextStyle(
+                                color: AppTheme.success,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)),
+                      ]),
                 ),
               ],
             ]),
@@ -1062,7 +1236,8 @@ class _AvatarWidget extends StatelessWidget {
                 ? Image.network(
               user.avatarUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _placeholder(size),
+              errorBuilder: (_, __, ___) =>
+                  _placeholder(size),
             )
                 : _placeholder(size),
           ),
@@ -1115,7 +1290,8 @@ class _PickOption extends StatelessWidget {
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
                 color: color.withOpacity(0.12), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 24),
@@ -1123,7 +1299,8 @@ class _PickOption extends StatelessWidget {
           const SizedBox(height: 10),
           Text(label,
               style: TextStyle(
-                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                  color:
+                  isDark ? Colors.white : AppTheme.lightTextPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w700)),
         ]),
@@ -1218,7 +1395,9 @@ class _PostThumbnail extends StatelessWidget {
               : _placeholder(),
         ),
         Positioned(
-          bottom: 0, left: 0, right: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
           child: Container(
             height: 30,
             decoration: BoxDecoration(
@@ -1234,7 +1413,8 @@ class _PostThumbnail extends StatelessWidget {
           ),
         ),
         Positioned(
-          bottom: 5, left: 6,
+          bottom: 5,
+          left: 6,
           child: Row(children: [
             const Icon(Icons.favorite_rounded,
                 color: Colors.white, size: 11),
@@ -1333,9 +1513,11 @@ class _TaggedGrid extends StatelessWidget {
                   _PostThumbnail(
                       post: post, color: color, isDark: isDark),
                   Positioned(
-                    top: 5, right: 5,
+                    top: 5,
+                    right: 5,
                     child: Container(
-                      width: 20, height: 20,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5),
                         shape: BoxShape.circle,
@@ -1456,7 +1638,8 @@ class _SquareBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32, height: 32,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           color: isDark
               ? Colors.white.withOpacity(0.07)
@@ -1469,9 +1652,8 @@ class _SquareBtn extends StatelessWidget {
         ),
         child: Icon(icon,
             size: 16,
-            color: isDark
-                ? Colors.white70
-                : AppTheme.lightTextPrimary),
+            color:
+            isDark ? Colors.white70 : AppTheme.lightTextPrimary),
       ),
     );
   }
@@ -1498,11 +1680,12 @@ class _EmptyGrid extends StatelessWidget {
         padding: const EdgeInsets.all(40),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 72, height: 72,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
-                shape: BoxShape.circle),
-            child: Icon(icon, color: color.withOpacity(0.35), size: 34),
+                color: color.withOpacity(0.08), shape: BoxShape.circle),
+            child:
+            Icon(icon, color: color.withOpacity(0.35), size: 34),
           ),
           const SizedBox(height: 16),
           Text(title,

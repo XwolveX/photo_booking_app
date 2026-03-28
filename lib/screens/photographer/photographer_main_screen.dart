@@ -11,6 +11,7 @@ import '../user/post_feed_screen.dart';
 import '../user/booking_history_screen.dart';
 import '../user/chat_list_screen.dart';
 import '../shared/profile_screen.dart';
+import '../shared/district_reminder_popup.dart'; // ← THÊM MỚI
 
 class PhotographerMainScreen extends StatefulWidget {
   const PhotographerMainScreen({super.key});
@@ -22,14 +23,33 @@ class PhotographerMainScreen extends StatefulWidget {
 class _PhotographerMainScreenState extends State<PhotographerMainScreen> {
   int _currentIndex = 0;
   static const _roleColor = AppTheme.rolePhotographer;
+  bool _districtChecked = false; // ← THÊM MỚI
 
   final List<Widget> _screens = const [
     PhotographerHomeScreen(),   // 0 — Trang chủ / Dashboard
     PostFeedScreen(),           // 1 — Bài viết
-    BookingHistoryScreen(),      // 2 — Lịch sử booking
+    BookingHistoryScreen(),     // 2 — Lịch sử booking
     ChatListScreen(),           // 3 — Chat
     ProfileScreen(),            // 4 — Tôi
   ];
+
+  // ── THÊM MỚI: check district sau khi widget có context ────
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_districtChecked) {
+      _districtChecked = true;
+      final uid = context.read<AuthProvider>().currentUser?.uid ?? '';
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      checkAndShowDistrictReminder(
+        context: context,
+        uid: uid,
+        roleColor: _roleColor,
+        isDark: isDark,
+      );
+    }
+  }
+  // ─────────────────────────────────────────────────────────
 
   void _onTap(int index) {
     HapticFeedback.lightImpact();
@@ -174,13 +194,18 @@ class _ChatNavItem extends StatelessWidget {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+                      color: isSelected
+                          ? color.withOpacity(0.12)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Icon(
-                      isSelected ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
+                      isSelected
+                          ? Icons.chat_bubble_rounded
+                          : Icons.chat_bubble_outline_rounded,
                       color: isSelected
                           ? color
                           : (isDark ? Colors.white38 : Colors.grey[400]),
@@ -206,26 +231,36 @@ class _ChatNavItem extends StatelessWidget {
                             builder: (context, snap2) {
                               int total = 0;
                               for (final doc in snap1.data?.docs ?? []) {
-                                final d = doc.data() as Map<String, dynamic>;
-                                total += (d['unreadUser1'] as int?) ?? 0;
+                                final d =
+                                doc.data() as Map<String, dynamic>;
+                                total +=
+                                    (d['unreadUser1'] as int?) ?? 0;
                               }
                               for (final doc in snap2.data?.docs ?? []) {
-                                final d = doc.data() as Map<String, dynamic>;
-                                total += (d['unreadUser2'] as int?) ?? 0;
+                                final d =
+                                doc.data() as Map<String, dynamic>;
+                                total +=
+                                    (d['unreadUser2'] as int?) ?? 0;
                               }
-                              if (total == 0) return const SizedBox.shrink();
+                              if (total == 0) {
+                                return const SizedBox.shrink();
+                              }
                               return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                padding: const EdgeInsets.all(3),
                                 decoration: const BoxDecoration(
-                                  color: AppTheme.secondary,
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                                  color: AppTheme.error,
+                                  shape: BoxShape.circle,
                                 ),
-                                child: Text(
-                                  total > 99 ? '99+' : '$total',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
+                                constraints: const BoxConstraints(
+                                    minWidth: 16, minHeight: 16),
+                                child: Center(
+                                  child: Text(
+                                    total > 99 ? '99+' : '$total',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               );
@@ -240,9 +275,12 @@ class _ChatNavItem extends StatelessWidget {
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
-                  color: isSelected ? color : (isDark ? Colors.white38 : Colors.grey[400]),
+                  color: isSelected
+                      ? color
+                      : (isDark ? Colors.white38 : Colors.grey[400]),
                   fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight:
+                  isSelected ? FontWeight.w700 : FontWeight.w400,
                 ),
                 child: const Text('Chat'),
               ),
@@ -293,9 +331,12 @@ class _NavItem extends StatelessWidget {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+                  color: isSelected
+                      ? color.withOpacity(0.12)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
@@ -310,9 +351,12 @@ class _NavItem extends StatelessWidget {
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
-                  color: isSelected ? color : (isDark ? Colors.white38 : Colors.grey[400]),
+                  color: isSelected
+                      ? color
+                      : (isDark ? Colors.white38 : Colors.grey[400]),
                   fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight:
+                  isSelected ? FontWeight.w700 : FontWeight.w400,
                 ),
                 child: Text(label),
               ),
